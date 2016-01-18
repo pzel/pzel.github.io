@@ -1,0 +1,246 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Lowbrow Haskell: A Quick Tetris Clone :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link rel="stylesheet" type="text/css" href="/css/style.css" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Lowbrow Haskell: A Quick Tetris Clone</h1>
+  <small class="post-date">2016-01-18</small>
+  <div class="heading">
+    <p>A short overview of a TTY retro game re-implemented in Haskell. </p>
+  </div>
+  <p><a target=_blank href="https://github.com/pzel/tetris"><img class="inset" src="/img/TetrisTTY.png"/></a></p>
+
+<p>In this post, I'd like to showcase an entertaining hack in Haskell: a
+<a href="https://github.com/pzel/tetris">clone</a> of the classic arcade game
+<a href="https://en.wikipedia.org/wiki/Tetris">Tetris</a>. As this was my first Haskell
+project in almost two years, I decided to keep things simple and minimal.  The
+project's only external dependency is
+<a href="https://wiki.haskell.org/Software_transactional_memory">stm</a>.</p>
+
+<h2>Design Goals</h2>
+
+<p>I set out with the following goals in mind:</p>
+
+<ul>
+<li>The game should run in the TTY</li>
+<li>It should be playable, and at least a little bit fun</li>
+<li>It may not have <strong>curses</strong>-like library dependencies</li>
+<li>The game state must be modeled fully in pure code</li>
+</ul>
+
+
+<p>Defining these up front helped me fight back feature creep and establish a
+point at which I could consider the project "finished". As usual, there are
+many things that need improvement, but I believe I've reached the above goals.</p>
+
+<h2>Modus Operandi</h2>
+
+<p>The development process was quite ad-hoc, as the repo's git history will
+reveal. I started from the bottom-up, modeling Tetris 'boards' and their
+various rotations.  As usual with bottom-up strategies, I initially missed the
+mark by a wide margin, but gained some intuition about the kinds of models I'd
+be working with.</p>
+
+<p>For the first couple of iterations, the entire game was contained within two
+files: <code>apps/Main.hs</code> and <code>src/Tetris.hs</code>, with some rudimentary tests in
+<code>test/Spec.hs</code>.  <code>Main.hs</code> was responsible for accepting keyboard input and
+drawing blocks, while <code>Tetris.hs</code> housed the representation of blocks and
+functions to rotate them.</p>
+
+<p>Out of this mud-ball, the MVC pattern slowly emerged. I did not set out with
+any interaction paradigm in mind, but the models and their relations naturally
+suggested MVC. More on this later.</p>
+
+<h2>The Architecture</h2>
+
+<p>The final working architecture consists of:</p>
+
+<h4>1. The top-level loop</h4>
+
+<pre><code>mainLoop :: Game -&gt; InputSource -&gt; IO ()
+mainLoop g@Game{gameOver=False} is =
+  drawGame g &gt;&gt; getInputEvent is &gt;&gt;= mainLoop is . flip updateGame g
+</code></pre>
+
+<p>Where the <code>InputSource</code> doubles as a pace-maker, returning an input event only
+after a certain time interval has passed. <code>mainLoop</code> will terminate when
+an application of <code>updateGame</code> sets the <code>gameOver</code> flag to <code>True</code>.</p>
+
+<h4>2. Game logic in <code>Tetris.Model.Game</code></h4>
+
+<p>This module exposes a minimal API, encapsulating all game state changes:</p>
+
+<pre><code>module Tetris.Model.Game (Game(..), InputEvent(..), freshGame, updateGame) 
+
+updateGame :: InputEvent -&gt; Game -&gt; Game
+updateGame ev = supplyNewBlock . dropBlock . updateTick . applyInput ev
+</code></pre>
+
+<p>Each of the four functions making up the body of <code>updateGame</code> has the type
+<code>Game -&gt; Game -&gt; Game</code>, which makes them smelly, but also very easy to tweak.</p>
+
+<p>Particular low-level decisions about the legality of board positions are made
+in the <code>Tetris.Game.Board</code> module, which knows all about the entities that
+inhabit the game board:</p>
+
+<pre><code>module Tetris.Model.Board
+  (Board(..), Block(..), BlockType(..), Cell
+   ,board, blocks, clearLines
+   ,emptyCell, fullCell
+   ,overlapsAt, rotated, spliceBoardAt
+  )
+</code></pre>
+
+<h4>3. Player input accepted and parsed in <code>Tetris.Controller</code></h4>
+
+<pre><code>module Tetris.Controller(InputSource, getInputEvent, startInputLoop)
+</code></pre>
+
+<p>This module's functionality was, to me, the most interesting component of the
+project. While the <code>Tetris.Model.Game</code> module has no concept of time, the
+<code>Controller</code> is all about time. It exposes two functions to the main driver loop:
+<code>startInputLoop</code> launches a thread which will buffer keyboard input, while
+<code>getInputEvent</code> blocks for a set interval and returns an opaque <code>InputEvent</code>, to
+be used in the pure <code>updateGame</code> function.</p>
+
+<pre><code>data InputSource = InputSource (TVar (Maybe Char))
+
+startInputLoop :: IO InputSource
+startInputLoop = do
+  is &lt;- InputSource &lt;$&gt; newTVarIO Nothing
+  forkIO (inputLoop is)
+  return is
+
+inputLoop :: InputSource -&gt; IO ()
+inputLoop i@(InputSource tvar) =
+  getChar &gt;&gt;= atomically . writeTVar tvar . Just &gt;&gt; inputLoop i
+</code></pre>
+
+<p>This starts a process that updates the STM variable (<code>TVar</code>), hidden inside the
+<code>InputSource</code>, whenever a key is pressed. Notice that this function overwrites
+the value.</p>
+
+<p>When the main loop asks for the most recent <code>InputEvent</code>, we sleep a
+while, reset the <code>Tvar</code> to <code>Nothing</code>, and return whatever was in the <code>TVar</code>
+before we cleared it.</p>
+
+<pre><code>getInputEvent :: InputSource -&gt; IO InputEvent
+getInputEvent (InputSource tvar) = do
+  tick 
+  c &lt;- readTVarIO tvar
+  when (isJust c) (atomically (writeTVar tvar Nothing))
+  return (inputEvent c)
+</code></pre>
+
+<p>What's <code>tick</code>? It makes sure our game runs at a constant refresh rate. The main
+loop will not progress until it gets its <code>InputEvent</code>. We leverage this fact
+to slip in the below code:</p>
+
+<pre><code>tick :: IO ()
+tick = threadDelay $ (1000 `div` 12) * 1000
+</code></pre>
+
+<p>I told you that this module was all about time!</p>
+
+<h4>4. Drawing things in <code>Game.View</code></h4>
+
+<p>This last bit of the MVC puzzle is extremely simple. Its only responsibility is
+to take a <code>Game</code> and render it as a <code>String</code>, so the main loop can dump it
+to the TTY.</p>
+
+<pre><code>module Tetris.View (showGame) where
+showGame :: Game -&gt; String
+</code></pre>
+
+<h2>Closing Thoughts</h2>
+
+<p>I had <strong>a ton of fun</strong> getting back into Haskell with this project. It was my
+first time using <code>stack</code>, the new Haskell project management tool, and also my
+first time writing a real-time UI in Haskell. Here are my main takeaways:</p>
+
+<h4>1. STM is a pleasure to use</h4>
+
+<p>Concurrency is fun, but it's also complex. I've spent the last two years coding
+almost exclusively in Erlang, where concurrent, loosely-coupled processes are
+the norm. With the awesome freedom comes the pain of managing an infinite space
+of incoming message formats and timings. Contrasted with the double-edged power
+of unconstrained message passing, typed STM feels like <a href="http://www.infoq.com/presentations/Simple-Made-Easy">simple made
+easy</a> again.</p>
+
+<h4>2. I don't need no stinkin' Curses</h4>
+
+<p><code>gnome-terminal</code> produces no visible artifacts while refreshing the entire
+terminal window smoothly at up to 24 times a second. Drawing a game frame to
+the screen is done in one line:</p>
+
+<pre><code>   drawGame g = clearTerm &gt;&gt; putStr (showGame g)
+</code></pre>
+
+<p>This is very convenient, and not having to deal with cursor addressing is
+bliss. Should I need more involved layouts, I'd rather put some work into
+composable screen regions – perhaps something like <a href="https://sarabander.github.io/sicp/html/2_002e2.xhtml#g_t2_002e2_002e4">the picture language from
+SICP</a> or
+Joey Hess' <a href="https://joeyh.name/blog/entry/a_tiling_region_manager_for_the_console/">console region
+manager</a>.</p>
+
+<h4>3. Buzzword-compliance is hard. Modeling counts</h4>
+
+<p>Having had a look around the Haskell blogosphere and watched some talks, I
+noticed that both Free Monads and FRP are steadily building a following. I
+intentionally kept this project simple to avoid turning it into an exercise in
+implementing a specific Cool Thing that's making the rounds.</p>
+
+<p>It turns out that by going low-brow and avoiding upfront abstraction, I painted
+myself into a corner. Having modeled the game as an IO-based core loop with
+pure game logic in a dedicated data structure, I'd inadvertently committed to a
+discrete and state-based architecture. While this code naturally broke apart
+into the Model, View and (the most interesting) Controller abstractions, I was
+left with a bunch of functions typed <code>Game -&gt; Game -&gt; Game</code>, which give off the
+distinctive smell of global state.</p>
+
+<p>I see no obvious way of implementing the same game within an FRP framework, but
+given another chance, I'd like to try my hand at modeling the state transitions
+as a DSL inside the Free monad. Perhaps a topic for another blog post?</p>
+
+<p><a href="https://pzel.github.io/feed.rss">Subscribe to the RSS's feed</a> and stay tuned!</p>
+
+  <div class="post-nav">
+    <div class="prev">
+       &nbsp;
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2016 <a href="/about.html">Simon Zelazny</a></span>
+  </div>
+  <div id="rfooter">
+    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
