@@ -85,7 +85,7 @@ updateGame ev = supplyNewBlock . dropBlock . updateTick . applyInput ev
 </code></pre>
 
 <p>Each of the four functions making up the body of <code>updateGame</code> has the type
-<code>Game -&gt; Game</code>, which makes them smelly, but also very easy to tweak.</p>
+<code>Game -&gt; Game -&gt; Game</code>, which makes them smelly, but also very easy to tweak.</p>
 
 <p>Particular low-level decisions about the legality of board positions are made
 in the <code>Tetris.Game.Board</code> module, which knows all about the entities that
@@ -203,7 +203,7 @@ myself into a corner. Having modeled the game as an IO-based core loop with
 pure game logic in a dedicated data structure, I'd inadvertently committed to a
 discrete and state-based architecture. While this code naturally broke apart
 into the Model, View and (the most interesting) Controller abstractions, I was
-left with a bunch of functions typed <code>Game -&gt; Game</code>, which give off the
+left with a bunch of functions typed <code>Game -&gt; Game -&gt; Game</code>, which give off the
 distinctive smell of global state.</p>
 
 <p>I see no obvious way of implementing the same game within an FRP framework, but
