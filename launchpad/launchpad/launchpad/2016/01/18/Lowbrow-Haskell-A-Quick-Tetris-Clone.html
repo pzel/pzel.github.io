@@ -85,7 +85,7 @@ updateGame ev = supplyNewBlock . dropBlock . updateTick . applyInput ev
 </code></pre>
 
 <p>Each of the four functions making up the body of <code>updateGame</code> has the type
-<code>Game -&gt; Game -&gt; Game</code>, which makes them smelly, but also very easy to tweak.</p>
+<code>Game -&gt; Game</code>, which makes them smelly, but also very easy to tweak.</p>
 
 <p>Particular low-level decisions about the legality of board positions are made
 in the <code>Tetris.Game.Board</code> module, which knows all about the entities that
