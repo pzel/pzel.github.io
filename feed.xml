@@ -7,6 +7,14 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Lorem Ipsum in Polish</title>
+        <description>Minimum viable Markov chains in Haskell</description>
+        <pubDate>Sat, 27 Feb 2016 00:00:00 +0100</pubDate>
+        <link>http://pzel.github.io/2016/02/27/Lorem-Ipsum-in-Polish.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2016/02/27/Lorem-Ipsum-in-Polish.html</guid>
+      </item>
+    
+      <item>
         <title>Lowbrow Haskell: A Quick Tetris Clone</title>
         <description>A short overview of a TTY retro game re-implemented in Haskell.</description>
         <pubDate>Mon, 18 Jan 2016 00:00:00 +0100</pubDate>

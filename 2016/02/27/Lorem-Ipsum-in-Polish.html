@@ -1,0 +1,262 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Lorem Ipsum in Polish :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link rel="stylesheet" type="text/css" href="/css/style.css" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Lorem Ipsum in Polish</h1>
+  <small class="post-date">2016-02-27</small>
+  <div class="heading">
+    <p>Minimum viable Markov chains in Haskell </p>
+  </div>
+  <p><a target=_blank href="http://slowotok.manisola.net"><img class="inset" src="/img/schulz.jpg"/></a></p>
+
+<p>As a weekend hack, I set out to build a minimalist <a href="https://github.com/pzel/slowotok">Markov chain generator for Polish text</a>. This was a personal itch I needed to scratch, unsatisfied with the two <a href="http://lipsum.zjekoza.pl/">available</a> <a href="http://lipsum.pl/">implementations</a>. The end product: <a href="http://slowotok.manisola.net">"Słowotok, or Lorem Ipsum in Polish"</a> is now online.</p>
+
+<p>The program itself is not tied to a particular locale, so if you need a generator, drop your chosen text files into <code>data</code> and you're good to go. It should work for European languages, and fail catastrophically for languages that don't delimit words by spaces.</p>
+
+<p>Below are some notes from the project.</p>
+
+<h2>Basic project structure</h2>
+
+<p>At its most general level, the program does the following:</p>
+
+<ol>
+<li>Read some files with Polish text</li>
+<li>Clean up the data</li>
+<li>Generate an N-gram database</li>
+<li>When requested, serve a random sampling of text, based on the N-grams</li>
+</ol>
+
+
+<p>That translates to the following <code>main</code> function:</p>
+
+<pre><code>main =
+  listDirectory "data" &gt;&gt;= mapM TIO.readFile &gt;&gt;=
+  withNgrams . digrams . clean . T.concat
+ where
+   withNgrams (!t) = scotty 3111 $ do
+     get "/" $ file "./data/index.html"
+     get "/text/:length" $ do
+       len &lt;- (min 1000) `fmap` param "length"
+       result &lt;- liftIO $ evalRandIO (fromDigrams len t)
+       text (connect result)
+</code></pre>
+
+<p>The relevant top-level functions exposed by the <code>Lib</code> module being:</p>
+
+<pre><code>module Lib
+  (Token, Corpus, Digrams, 
+  clean, digrams, fromDigrams) where
+
+clean :: T.Text -&gt; Corpus
+digrams :: Corpus -&gt; Digrams
+fromDigrams :: (RandomGen g) =&gt; Integer -&gt; Digrams -&gt; Rand g [Token]
+</code></pre>
+
+<hr />
+
+<h2>Interesting and Problematic bits</h2>
+
+<h3>1. Lazy IO vs. "readiness to serve"</h3>
+
+<p>I'd really like steps 1-3 from the main plan to be completed before the HTTP
+server starts accepting requests.  Otherwise — due to Haskell's lazy
+evaluation — the first request to hit the server would force the runtime to
+evaluate the entire path of dependencies leading up to a response. In practice,
+this would mean that the first request to a freshly started server would take
+~3-5 seconds, depending on the available CPU/IO resources on the hosting
+machine.</p>
+
+<p>Consider this first iteration of the <code>main</code> function:</p>
+
+<pre><code>main = do
+  files &lt;- listDirectory "data"
+  t &lt;- (trigrams . clean . T.concat) `fmap` mapM TIO.readFile files
+  scotty 3111 $ do
+    get "/text/:length" $ do
+      len &lt;- (min 1000) `fmap` param "length"
+      result &lt;- liftIO $ evalRandIO (fromTrigrams len t)
+      text (connect result)
+</code></pre>
+
+<p>The problem occurs when our <code>get</code> handler receives the first HTTP request,
+and the value of <strong>t</strong> in the expression <code>(fromTrigrams len t)</code> is needed to
+produce output.</p>
+
+<p>This, in turn, forces the runtime to:</p>
+
+<ol>
+<li>list the "data" directory (<code>listDirectory "data'</code>)</li>
+<li>read all the text files' contents (<code>mapM TIO.readFile files</code>)</li>
+<li>prepare the text and create a trigram database (<code>trigrams . clean . T.concat</code>)</li>
+</ol>
+
+
+<p>But these are <strong>exactly</strong> the steps we want completed by the time
+we've started serving requests.</p>
+
+<p>The quickest solution here is to use GHC's
+<a href="https://downloads.haskell.org/~ghc/7.8.4/docs/html/users_guide/bang-patterns.html">Bang Patterns</a>, which tell the compiler we want a value to be fully evaluated inside
+a given function body. Hence the helper function:</p>
+
+<pre><code>withNgrams (!t) = scotty 3111 $ do
+</code></pre>
+
+<p>This ensures that when we evaluate <code>scotty 3111</code>, <strong>t</strong> has been constructed and is
+ready to use.</p>
+
+<h3>2. Randomness</h3>
+
+<p>In contrast with every practical language I've used, Haskell does not provide an "easy"
+method of acquiring a random value. One can get "easy" random values in the <code>IO</code>
+monad, (<code>randomIO :: IO a</code>) but that's no fun.</p>
+
+<p><code>System.Random</code>, in tandem with <code>Control.Monad.Random</code>, give us a nice way out.
+We can have the best of both worlds with testable, predictable "randomness" in tests
+and real IO-dependent randomness in production.</p>
+
+<p>The <code>Rand</code> monad lets us generate pure random values, based on a random generator <code>g</code>.
+Here's a test that always passes:</p>
+
+<pre><code>it "is generated from digrams" $ do
+  let t = digrams ["a", "b", "c", "a", "b", "c"]
+      g = mkStdGen 1
+  evalRand (fromDigrams 1 t) g `shouldBe` ["c", "a", "b"]
+</code></pre>
+
+<p>The type of the generating function is:</p>
+
+<pre><code> fromDigrams :: (RandomGen g) =&gt; Integer -&gt; Digrams -&gt; Rand g [Token]
+</code></pre>
+
+<p>where <code>Rand g [Token]</code> could be read as: a monadic function that, when applied
+to a source of randomness <code>g</code>, will yield a list of <code>Token</code>s of the desired length.</p>
+
+<p>The digrams themselves are modeled as a <code>Map (Token,Token) [Token]</code>.
+For each sequence of <code>Tokens</code> <code>t1</code>,<code>t2</code>,<code>t*</code> we hold a list of <code>t*</code>s
+found in the <code>Corpus</code>.</p>
+
+<p>Given an existing Markov chain holding:</p>
+
+<pre><code>[..,"hello", "there"]
+</code></pre>
+
+<p>we have to proceed by adding one of the elements held in the Map entry:</p>
+
+<pre><code>("hello","there") =&gt; ["gentlemen", "ladies", "world", "ladies"]
+</code></pre>
+
+<p>Notice how we encode the probablities of each transition in the form of duplicated
+list entries. The probablities of particular transitions are:</p>
+
+<pre><code>hello there ladies : 2/4
+hello there gentlemen : 1/4
+hello there world : 1/4
+</code></pre>
+
+<p>How do we make this happen? Simple!</p>
+
+<pre><code>randomEl :: (RandomGen g) =&gt; [a] -&gt; Rand g a
+randomEl l = getRandomR (0, length l - 1) &gt;&gt;= return . (l  !!)
+</code></pre>
+
+<h3>3. A proliferation of types</h3>
+
+<p>I am not particularly proud of the way the various N-gram contracts are reflected
+in the types. We have:</p>
+
+<pre><code>type Unigrams = M.Map Token [Token]
+type Digrams = M.Map (Token,Token) [Token]
+type Trigrams = M.Map (Token,Token,Token) [Token]
+</code></pre>
+
+<p>This guarantees that for any sequence (as long as it's a sequnce of length 1,2
+or 3) of <code>Token</code>s found in the source <code>Corpus</code>, there will always be a key
+containing those <code>Token</code>s, tupled up, in the resulting database.</p>
+
+<p>If we know that the words "veni", "vidi", "vici" appear together in the source, we
+can be sure that if we <code>lookup</code> ("veni", "vidi") in a map of <code>Digrams</code>, we'll
+<strong>at least</strong> get ["vici"]. This means that we can generate sequences of
+arbitrary length, without ever hitting a "terminating" key, for which no
+subsequent tokens will be found.</p>
+
+<p>This is a nice safety property, but it forces us to provide separate
+functions for each <code>N</code>ness of the N-grams we want to support.</p>
+
+<p>For example: to build a dictionary of digrams, we use:</p>
+
+<pre><code>digrams :: Corpus -&gt; Digrams
+digrams = let merge (t,u,v) m = M.insertWith (++) (t,u) [v] m
+           in ngrams merge triplets
+</code></pre>
+
+<p>...and for trigrams:</p>
+
+<pre><code>trigrams :: Corpus -&gt; Trigrams
+trigrams = let merge (t,u,v,w) m = M.insertWith (++) (t,u,v) [w] m
+           in ngrams merge quadruplets
+</code></pre>
+
+<p>And the reverse — generating functions:</p>
+
+<pre><code>fromDigrams :: (RandomGen g) =&gt; Integer -&gt; Digrams -&gt; Rand g [Token]
+fromDigrams k m = fromNGrams (\(t,v) e -&gt; [e,v,t]) (\(v:t:_) -&gt; (t,v)) k m
+
+fromTrigrams :: (RandomGen g) =&gt; Integer -&gt; Trigrams -&gt; Rand g [Token]
+fromTrigrams k m = fromNGrams (\(t,v,u) e -&gt; [e,u,v,t]) (\(u:v:t:_) -&gt; (t,v,u)) k m
+</code></pre>
+
+<p>There is a lot of rather pointless marshalling and unmarshalling of tuples
+to lists and vice versa. All of the functions could just use lists as the <code>Map</code>
+keys, but then the type checker wouldn't be able to tell us that inserting the key
+["veni"] into a map of <code>Trigrams :: Map [Token] [Token]</code> is a bad idea.</p>
+
+<p>Since the program realistically only needs to support digrams and trigrams,
+this is not that much of a burden, but rather an aesthetic objection.</p>
+
+<p>I'll be looking into the <a href="http://research.microsoft.com/en-us/um/people/simonpj/papers/assoc-types/fun-with-type-funs/typefun.pdf">Type Family Tutorial</a> to see how this
+issue could be resolved in a more generic manner, with less code.</p>
+
+<p>Hopefully more coming up on the topic! Thanks for reading.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html">⇦Lowbrow Haskell: A Quick Tetris Clone</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2016 <a href="/about.html">Simon Zelazny</a></span>
+  </div>
+  <div id="rfooter">
+    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
