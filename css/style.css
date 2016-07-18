@@ -1,7 +1,7 @@
 @media(max-width: 600px) {img { width: 100%; }}
-@media(min-width: 600px) {#content { width: 40em; margin: 0 auto }}
-body { font-size: 130%; font-family: "Garamond", "Times", serif; padding: 2px; margin: 0}
-/* h1,h2,h3,h4,h5 {margin-top: 1em; text-align: left;} */
+@media(min-width: 600px) {#content { width: 42em; margin: 0 auto }}
+body { font-size: 140%; font-family: "Garamond", "Times", serif; padding: 2px; margin: 0}
+h1,h2,h3,h4,h5 { font-family: "Helvetica", "Arial", sans; text-align: left; }
 blockquote { border-left: 1px solid #ddd; padding-left: 2em;}
 .post-body { text-align: justify; }
 .post-body h2, .post-body h3, .post-body h4 { font-weight: bold; }
@@ -30,6 +30,6 @@ footer { border-top: 1px #eee solid; }
 .post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
 .post-body .post-date { font-style:italic; }
 footer { text-align: justify; font-size: 90%; clear: both; padding-top: 1em;}
-.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #eaffff; overflow-x: auto;}
+.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #ffffdf; overflow-x: auto;}
 /* .post-body code {border: 1px solid #ddd;} */
 .post-body pre code {border: none;}

@@ -1,0 +1,173 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Encrypted hledger with Emacs and GnuPG :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link rel="stylesheet" type="text/css" href="/css/style.css" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Encrypted hledger with Emacs and GnuPG</h1>
+  <small class="post-date">2016-07-18</small>
+  <div class="heading">
+    <p>A reasonably seamless way to work with encrypted ledger files </p>
+  </div>
+  <p>Last month, I went all-in with organizing my life in plain text. I started
+logging work and study notes in <a href="http://orgmode.org">org-mode</a>,
+and adopted <a href="http://hledger.org">hledger</a> for keeping track of finances.</p>
+
+<p>Both personal notes and financial documents warrant extra security measures.
+Emacs' <a href="https://www.emacswiki.org/emacs/EasyPG">EasyPG</a> integrates seamlessly
+with my day-to-day emacsing, so I decided to leverage the fact. Below are some
+short notes on how to get things working with the least amount of hassle.</p>
+
+<p>This blog entry assumes the reader has <a href="https://gnupg.org">GnuPG</a> set up on
+their machine.</p>
+
+<h2>Encrypting your text files</h2>
+
+<p>EasyPG has a neat way of letting you specify whose public key you'd like to
+encrypt a given file with. You can set elisp variables in a 'special' comment
+in the first line of the file:</p>
+
+<pre><code>  ;; -*- epa-file-encrypt-to: ("your.publickey@email.com");  -*-
+</code></pre>
+
+<p>When emacs reads this file from disk, it will set the buffer-local variable
+<code>epa-file-encrypt-to:</code> to your specified email address. This means that, upon
+saving, EasyPG will use that public key to encrypt the file.</p>
+
+<p>However, until you actually save the file to disk, and then re-read it, EasyPG
+will, ask you to specify whose key you'd like to encrpyt the file
+with... <em>Didn't we just do that via the 'magic comment'!?</em></p>
+
+<p>There is a way around this behavior. We force Emacs to interpret the magic
+comment by switching to <code>normal-mode</code> and back.</p>
+
+<pre><code>(defun refresh-buffer ()
+  "Reload file-local variables"
+  (interactive)
+  (let ((v major-mode))
+    (normal-mode)
+    (funcall v)))
+
+(global-set-key (kbd "&lt;f5&gt;") 'refresh-buffer)
+</code></pre>
+
+<p>Now we need to just hit <code>&lt;F5&gt;</code> once after writing the magic comment. After
+that, the file will get auto-encrypted whenever we save with <code>C-x C-s</code>.</p>
+
+<p>If you have a whole directory of files you'd like to encrypt (like a personal
+diary), it's best to leverage emacs' '<a href="https://www.emacswiki.org/emacs/DirectoryVariables">directory
+variables</a>' feature. Just
+pop a file named <code>.dir-locals.el</code> in the directory, and inside it, put:</p>
+
+<pre><code>(
+ (nil . ((epa-file-encrypt-to . ("your.publickey@email.com"))))
+)
+</code></pre>
+
+<p>This will tell EasyPG to encrypt all files you save in this directory with
+"your.publickey@email.com". (The <code>nil</code> in the car of the first pair stands for
+"any major mode").</p>
+
+<h2>Decrypting your text files</h2>
+
+<p>This is easiest if you save all your encrypted files as <code>XYZ.gpg</code>, or
+<code>XYZ.gpg.asc</code>, and then set the following variable:</p>
+
+<pre><code>  (setq-default epa-file-name-regexp "\\.\\(asc\\|gpg\\|gpg~\\|asc~\\)\\'")
+</code></pre>
+
+<p>Upon opening an encrypted file, Emacs (or your window manager) will pop up a
+modal window asking for your private key passphrase. This only has to be done
+once in a while, as the passphrase is cached in memory by gpg-agent for some
+time.</p>
+
+<h2>And now, the legder</h2>
+
+<p>This is a sample journal file from hledger's documentation:</p>
+
+<pre><code>; A sample journal file. This is a comment.
+
+2008/01/01 income               
+    assets:bank:checking  $1    
+    income:salary        $-1    
+
+2008/06/01 gift
+    assets:bank:checking  $1    
+    income:gifts         $-1    
+</code></pre>
+
+<p>As noted above, we'll just need to furnish it with EasyPG's magic variable:</p>
+
+<pre><code>; -*- epa-file-encrypt-to: ("your.publickey@email.com");  -*-
+; A sample journal file. This is a comment.
+
+2008/01/01 income               
+    assets:bank:checking  $1    
+    income:salary        $-1    
+</code></pre>
+
+<p>Then, hit <code>&lt;F5&gt;</code>, and then save the file as <code>~/hledger.journal.gpg.asc</code>. Close
+it, and then verify that it's encrypted via:</p>
+
+<pre><code>$ cat ~/hledger.journal.gpg.asc
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v2
+
+hBENO538+KYKbPGzAQf9HlZ7eFwE/V/kCwCRCzA2B1Zvut3MJONtIZ8O0bcAyRLS
+xfZt9wlg4v5yZtGji6SH73yzlxdz2VZRjkTb7neVIUz/ySJlrzoS+R1SPEBvBHy+
+W5j/+bitbx/gqWMwCC3cn2geSY86mnKmAFdtbFeD56Zyb7sgv0KAghrKUhDUU+lc
+Lfl920jsryYu+VjDohJDJyuLGv9j4o62i47D4tQIwSGhFYZArLmqs6et/wKKZWIr
+(...)
+</code></pre>
+
+<p>Now, we'll tell hledger to always use this file for generating reports.  I keep
+a separate script named <code>hl</code>, containing the following:</p>
+
+<pre><code>#!/bin/sh
+gpg2 --decrypt $HOME/hledger.journal.gpg.asc 2&gt;/dev/null | hledger -f- "$@"
+</code></pre>
+
+<p>You can now use <code>hl reg expenses</code> to feel bad about your wastefulness.</p>
+
+<p>Happy organizing!</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2016/02/27/Lorem-Ipsum-in-Polish.html">⇦Lorem Ipsum in Polish</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2016 <a href="/about.html">Simon Zelazny</a></span>
+  </div>
+  <div id="rfooter">
+    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
