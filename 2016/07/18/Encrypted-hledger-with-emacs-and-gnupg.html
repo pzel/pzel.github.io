@@ -63,13 +63,13 @@ their machine.</p>
 
 <p>EasyPG has a neat way of letting you specify whose public key you'd like to
 encrypt a given file with. You can set elisp variables in a 'special' comment
-in the first line of the file:</p>
+on the first line of the file:</p>
 
 <pre><code>  ;; -*- epa-file-encrypt-to: ("your.publickey@email.com");  -*-
 </code></pre>
 
 <p>When emacs reads this file from disk, it will set the buffer-local variable
-<code>epa-file-encrypt-to:</code> to your specified email address. This means that, upon
+<code>epa-file-encrypt-to</code> to your specified email address. This means that, upon
 saving, EasyPG will use that public key to encrypt the file.</p>
 
 <p>However, until you actually save the file to disk, and then re-read it, EasyPG
