@@ -111,7 +111,7 @@ pop a file named <code>.dir-locals.el</code> in the directory, and inside it, pu
 <p>This is easiest if you save all your encrypted files as <code>XYZ.gpg</code>, or
 <code>XYZ.gpg.asc</code>, and then set the following variable:</p>
 
-<pre><code>  (setq-default epa-file-name-regexp "\\.\\(asc\\|gpg\\|gpg~\\|asc~\\)\\'")
+<pre><code>  (setq epa-file-name-regexp "\\.\\(gpg\\|\\asc\\)\\(~\\|\\.~[0-9]+~\\)?\\'")
 </code></pre>
 
 <p>Upon opening an encrypted file, Emacs (or your window manager) will pop up a
