@@ -112,6 +112,7 @@ pop a file named <code>.dir-locals.el</code> in the directory, and inside it, pu
 <code>XYZ.gpg.asc</code>, and then set the following variable:</p>
 
 <pre><code>  (setq epa-file-name-regexp "\\.\\(gpg\\|\\asc\\)\\(~\\|\\.~[0-9]+~\\)?\\'")
+  (epa-file-name-regexp-update)
 </code></pre>
 
 <p>Upon opening an encrypted file, Emacs (or your window manager) will pop up a
