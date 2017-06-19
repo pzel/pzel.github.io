@@ -421,7 +421,8 @@ Think of them as simply ad-hoc packages of data.</p>
 <pre><code>&gt; {1,2,3,potato, fun(X) -&gt; X + 5 end}.
 {1,2,3,potato,#Fun&lt;erl_eval.6.50752066&gt;}
 </code></pre>
-</answer></fram><fram ord='46'><ord>46</ord><question><p>Yes. Anything can be packed into a tuple, even Pocket-universe Ids.</p>
+</answer></fram><fram ord='46'><ord>46</ord><question><p>Yes. Anything can be packed into a tuple, including functions
+and Pocket-universe Ids.</p>
 
 <p>Now, <em>lists</em> look like tuples, except they&rsquo;re surrounded by <code>[</code> and <code>]</code>.</p>
 
@@ -430,18 +431,18 @@ Think of them as simply ad-hoc packages of data.</p>
 <pre><code>&gt; [1,2,3,4]
 </code></pre>
 </question><answer><p>Yes, by your definition.</p>
-
-<pre><code>&gt; [1,2,3,4].
-[1,2,3,4]
+</answer></fram><fram ord='47'><ord>47</ord><question><p>Verify your answer with the function <code>is_list</code>.</p>
+</question><answer><pre><code>&gt; is_list([1,2,3,4]).
+true
 </code></pre>
-</answer></fram><fram ord='47'><ord>47</ord><question><p>Are all of these lists as well?</p>
+</answer></fram><fram ord='48'><ord>48</ord><question><p>Are all of these lists as well?</p>
 
 <pre><code>&gt; [].
 &gt; [1].
 &gt; [1,potato, fun(X) -&gt; X + 1 end].
 </code></pre>
 </question><answer><p>By your definition, yes.</p>
-</answer></fram><fram ord='48'><ord>48</ord><question><p>Correct. Lists are much like tuples on the surface, but we can perform many
+</answer></fram><fram ord='49'><ord>49</ord><question><p>Correct. Lists are much like tuples on the surface, but we can perform many
 more interesting operations on lists.<sup>&dagger;</sup></p>
 
 <hr />
@@ -450,7 +451,7 @@ more interesting operations on lists.<sup>&dagger;</sup></p>
 (MIT Press) for a thorough course on lists.
 </small></p>
 </question><answer><p>Okay, does this have anything to do with that line of code you&rsquo;re explaining?</p>
-</answer></fram><fram ord='49'><ord>49</ord><question><p>Yes. Let&rsquo;s take a look at that line again.</p>
+</answer></fram><fram ord='50'><ord>50</ord><question><p>Yes. Let&rsquo;s take a look at that line again.</p>
 
 <pre><code>&gt; [ {hello, N} || N &lt;- [1,2,3,4,5] ].
 </code></pre>
@@ -460,12 +461,12 @@ more interesting operations on lists.<sup>&dagger;</sup></p>
 <p>Do you recognize the Erlang data structures?</p>
 </question><answer><p>It looks like there&rsquo;s a <em>list</em> on the outside, a <em>tuple</em>, a double-pipe <code>||</code>,
 a variable, a left-arrow <code>&lt;-</code>, and another list on the inside.</p>
-</answer></fram><fram ord='50'><ord>50</ord><question><p>Correct, when you see <code>||</code> and <code>&lt;-</code>, you can assume you&rsquo;re in the presence of
+</answer></fram><fram ord='51'><ord>51</ord><question><p>Correct, when you see <code>||</code> and <code>&lt;-</code>, you can assume you&rsquo;re in the presence of
 a list comprehension.</p>
 
 <p>Read <code>||</code> as <em>for every</em> and <code>&lt;-</code> as <em>in</em>. Read all other data as-is.</p>
 </question><answer><p>The tuple <code>{hello, N}</code> <em>for every</em> <code>N</code> <em>in</em> the list <code>[1,2,3,4,5]</code>.</p>
-</answer></fram><fram ord='51'><ord>51</ord><question><p>Correct. Let&rsquo;s do one more.</p>
+</answer></fram><fram ord='52'><ord>52</ord><question><p>Correct. Let&rsquo;s do one more.</p>
 
 <p>Read this, and describe what it returns.</p>
 
@@ -475,28 +476,28 @@ a list comprehension.</p>
 inclusive.</p>
 
 <p>This returns the first 10 powers of two, preceded by the exponent.</p>
-</answer></fram><fram ord='52'><ord>52</ord><question><p>Don&rsquo;t you wish there was a nicer way to describe the range of numbers we want
+</answer></fram><fram ord='53'><ord>53</ord><question><p>Don&rsquo;t you wish there was a nicer way to describe the range of numbers we want
 to use as the source of <code>N</code>?</p>
 </question><answer><p>I do.</p>
-</answer></fram><fram ord='53'><ord>53</ord><question><p>This will likely do what you expect:</p>
+</answer></fram><fram ord='54'><ord>54</ord><question><p>This will likely do what you expect:</p>
 
 <pre><code>&gt; lists:seq(1, 10).
 </code></pre>
 </question><answer><pre><code>&gt; lists:seq(1, 10).
 [1,2,3,4,5,6,7,8,9,10]
 </code></pre>
-</answer></fram><fram ord='54'><ord>54</ord><question><p>Can you generate the first 100 powers of two?</p>
+</answer></fram><fram ord='55'><ord>55</ord><question><p>Can you generate the first 100 powers of two?</p>
 </question><answer><pre><code>&gt; [ math:pow(2, N) || N &lt;- lists:seq(1,100) ].
 [2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0,2048.0,
  4096.0,8192.0,16384.0,32768.0,65536.0,131072.0,262144.0,
  524288.0,1048576.0,2097152.0,4194304.0,8388608.0,16777216.0,
  33554432.0,67108864.0,134217728.0,268435456.0,536870912.0|...]
 </code></pre>
-</answer></fram><fram ord='55'><ord>55</ord><question><p>Now we can return to the task of spawning a whole swarm of pocket universes.</p>
+</answer></fram><fram ord='56'><ord>56</ord><question><p>Now we can return to the task of spawning a whole swarm of pocket universes.</p>
 </question><answer><p>How many is reasonable?</p>
-</answer></fram><fram ord='56'><ord>56</ord><question><p>A lot more than you expect. Let&rsquo;s try ten thousand for starters.</p>
+</answer></fram><fram ord='57'><ord>57</ord><question><p>A lot more than you expect. Let&rsquo;s try ten thousand for starters.</p>
 </question><answer><p>What will we want running in our pocket universe?</p>
-</answer></fram><fram ord='57'><ord>57</ord><question><p>Let&rsquo;s revisit our <code>PrintForever</code> function.</p>
+</answer></fram><fram ord='58'><ord>58</ord><question><p>Let&rsquo;s revisit our <code>PrintForever</code> function.</p>
 
 <pre><code>&gt; PrintForever = fun PrintForever(X, Interval) -&gt;
                    erlang:display(X),
@@ -508,20 +509,21 @@ to use as the source of <code>N</code>?</p>
 <p>Can you make each pocket universe print a different number?</p>
 </question><answer><p>Yes. Here goes.</p>
 
-<pre><code>&gt; [ spawn(fun() -&gt; PrintForever(N,60) end) || N &lt;- lists:seq(1,1*1000*1000) ].
+<pre><code>&gt; [ spawn(fun() -&gt; PrintForever(N,3) end) 
+    || N &lt;- lists:seq(1,10*1000) ].
 </code></pre>
-</answer></fram><fram ord='58'><ord>58</ord><question><p>Wait!</p>
+</answer></fram><fram ord='59'><ord>59</ord><question><p>Wait!</p>
 
 <p>Before you run this and inevitably fill your screen with numbers,
 can you read that list comprehension out loud?</p>
-</question><answer><p>Spawn a universe running the function <code>PrintForever(N,1)</code> for every N
+</question><answer><p>Spawn a universe running the function <code>PrintForever(N,3)</code> for every N
 in the list 1..10000.</p>
-</answer></fram><fram ord='59'><ord>59</ord><question><p>Let&rsquo;s do it!</p>
+</answer></fram><fram ord='60'><ord>60</ord><question><p>Let&rsquo;s do it!</p>
 </question><answer><p>I see a lot on the screen.</p>
-</answer></fram><fram ord='60'><ord>60</ord><question><p>Yes. All those pocket universes are running <em>concurrently</em>.  Each universe
+</answer></fram><fram ord='61'><ord>61</ord><question><p>Yes. All those pocket universes are running <em>concurrently</em>.  Each universe
 performs its own work, completely oblivous to what the others are doing.</p>
 </question><answer><p>How many can I run, realistically?</p>
-</answer></fram><fram ord='61'><ord>61</ord><question><p>Launch the Erlang shell with <code>erl +P 134217727</code> and see if you can
+</answer></fram><fram ord='62'><ord>62</ord><question><p>Launch the Erlang shell with <code>erl +P 134217727</code> and see if you can
 hit that limit.</p>
 
 <p>You&rsquo;ll want to spawn <code>PrintForever</code> with a higher interval, so
