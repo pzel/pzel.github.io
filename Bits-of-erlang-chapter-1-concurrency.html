@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta title="Bits of Erlang, chapter 1: Concurrency">
+    <link rel="created-with" href="https://github.com/pzel/mondo">
+    <style type="text/css">
+     body {
+  margin: 0;
+  color: #111;
+  font-family: sans-serif;
+}
+article {
+  border-bottom: 1px black solid;
+  line-height: 1.4;
+}
+code, pre {
+  font-family: "Monaco", Monospace;
+  white-space: pre-wrap; 
+}
+fram, fram > * { display: inline-block; }
+fram.revealed > answer { visibility: visible; }
+fram.previous > answer { font-weight: bolder; }
+fram.focused > question { visibility: visible; }
+fram.focused > answer, fram.hidden > answer {
+  visibility: hidden; }
+fram.hidden > question, fram.hidden > answer {
+  visibility: hidden; }
+fram {
+  position:relative;
+  clear: both;
+  border-top: 1px #999 solid;
+  padding: 2em 0em 2em;
+/*  margin-bottom: 2em; */
+  width: 100%;
+}
+
+fram > ord {
+  text-align: left;
+  font-size: 60%;
+  line-height: 1;
+  float: left;
+  position: absolute;
+  top: 0;
+  left: 1;
+  /* comment the following to display qa numbers in topleft corner */
+  display: none;
+}
+
+fram > question, fram > answer {
+  float: left;
+  width: 46%;
+  padding-bottom: 2em;
+}
+fram > answer {
+  margin-left: 4%;
+}
+fram > question { margin-left: 2%; overflow-x: auto; }
+
+h1#main-title {
+  float: left;
+  width: 48%;
+  margin-left: 2%;
+}
+div.instructions{
+  margin-top: 1em;
+  float: right;
+  width: 48%;
+}
+footer {
+  clear: both;
+  text-align: left;
+  padding: 1em 2%;
+  font-size: small; }
+
+    </style>
+    </head>
+    <body>
+      <h1 id="main-title">Bits of Erlang, chapter 1: Concurrency</h1>
+      <div class="instructions"><em>
+Use the <code>UP</code> and <code>DOWN</code> keys on your keyboard to reveal and hide answers.</br>
+The <code>N(ext)</code> and <code>P(revious)</code> keys will also work.
+<p>Press <code>Escape</code> to reveal everything and disable interactivity.</p>
+      </em></div>
+      <article>
+<fram ord='1'><ord>1</ord><question><p>Do you have the interactive Erlang, shell, <code>erl</code>, ready to go?</p>
+</question><answer><p>Let me try:</p>
+
+<pre><code>$ erl
+Erlang/OTP 17 [erts-6.4] [source] [64-bit] [smp:4:4]
+
+Eshell V6.4  (abort with ^G)
+1&gt;
+</code></pre>
+
+<p>Yes!</p>
+</answer></fram><fram ord='2'><ord>2</ord><question><p>Press <code>Control-C</code> twice to get out.</p>
+</question><answer><p>Ok.</p>
+
+<pre><code>BREAK: (a)bort (c)ontinue (p)roc info (i)nfo (l)oaded
+       (v)ersion (k)ill (D)b-tables (d)istribution
+^C$
+</code></pre>
+</answer></fram><fram ord='3'><ord>3</ord><question><p>Great! We&rsquo;re ready to begin.</p>
+
+<p>Start the shell again, and let&rsquo;s define a simple function. What do you think it does?</p>
+
+<pre><code>&gt; Id = fun Id(X) -&gt;
+         X
+       end.
+</code></pre>
+</question><answer><p>It looks like this function just returns the parameter that was passed.</p>
+</answer></fram><fram ord='4'><ord>4</ord><question><p>Yes. Does it seem strange to you that variable names are <code>Uppercase</code>?</p>
+</question><answer><p>No, please continue.</p>
+</answer></fram><fram ord='5'><ord>5</ord><question><p>What happens when we pass this function a number, say, <code>22</code>?</p>
+
+<pre><code>&gt; Id(22).
+</code></pre>
+</question><answer><p>We should get back <code>22</code>.</p>
+</answer></fram><fram ord='6'><ord>6</ord><question><p>Indeed:</p>
+
+<pre><code>&gt; Id(22).
+22
+</code></pre>
+</question><answer><p>As expected.</p>
+</answer></fram><fram ord='7'><ord>7</ord><question><p><code>Id</code> is a rather trivial function, but productively so.</p>
+
+<p>Can you think of a simple function that&rsquo;s of no use? What would it return?</p>
+</question><answer><p>Nothing!</p>
+</answer></fram><fram ord='8'><ord>8</ord><question><p>Yes, that&rsquo;s a good choice.</p>
+
+<pre><code>&gt; Forever = fun Forever() -&gt;
+              Forever()
+            end.
+</code></pre>
+
+<p>Let&rsquo;s run it.</p>
+</question><answer><pre><code>&gt; Forever().
+</code></pre>
+
+<p>&hellip;
+I&rsquo;m stuck now.</p>
+</answer></fram><fram ord='9'><ord>9</ord><question><p>As expected. This function will never return, as it just calls itself over and over again.<sup>&dagger;</sup></p>
+
+<p>Quit the <code>erl</code> shell and let&rsquo;s try again.</p>
+
+<hr />
+
+<p><small><sup>&dagger;</sup> If you&rsquo;re worried about the stack, don&rsquo;t be. Erlang does <em>tail call optimization</em>.</small></p>
+</question><answer><p>I&rsquo;m back again, in a new shell&hellip;</p>
+</answer></fram><fram ord='10'><ord>10</ord><question><p>Erlang lets us create little pocket universes, where we can run our functions.</p>
+
+<p>Try this:</p>
+
+<pre><code>&gt; Forever = fun Forever() -&gt;
+              Forever()
+            end.
+
+&gt; spawn(fun() -&gt; 
+          Forever()
+        end).
+</code></pre>
+</question><answer><pre><code>&lt;0.36.0&gt;
+</code></pre>
+
+<p>Hmm&hellip; I got back a strange number. I can still use my shell, though!</p>
+</answer></fram><fram ord='11'><ord>11</ord><question><p>That is the address to our pocket universe.</p>
+</question><answer><p>How can I be sure?</p>
+</answer></fram><fram ord='12'><ord>12</ord><question><pre><code>&gt; ForeverPid = spawn(fun() -&gt;
+                       Forever()
+                     end).
+
+&gt; is_pid(ForeverPid).
+</code></pre>
+</question><answer><pre><code>true
+</code></pre>
+</answer></fram><fram ord='13'><ord>13</ord><question><p>That&rsquo;s the ID (<code>pid</code>) of the pocket universe in which our function is running.</p>
+
+<p>Erlang calls this pocket universe a <em>process</em>.</p>
+
+<p>What do you think this returns?</p>
+
+<pre><code>&gt; is_process_alive(ForeverPid).
+</code></pre>
+</question><answer><pre><code>true
+</code></pre>
+</answer></fram><fram ord='14'><ord>14</ord><question><p>What if we run our <code>Id</code> function in a pocket universe?</p>
+</question><answer><pre><code>&gt; IdPid = spawn(fun() -&gt; Id(22) end).
+&lt;0.44.0&gt;
+</code></pre>
+
+<p>Looks like it worked.</p>
+</answer></fram><fram ord='15'><ord>15</ord><question><p>But is that universe still alive?</p>
+</question><answer><pre><code>&gt; is_process_alive(IdPid).
+false
+</code></pre>
+</answer></fram><fram ord='16'><ord>16</ord><question><p>Is <code>ForeverPid</code> still alive?</p>
+</question><answer><pre><code>&gt; is_process_alive(ForeverPid).
+true
+</code></pre>
+
+<p>Yes, it seems to be.</p>
+</answer></fram><fram ord='17'><ord>17</ord><question><p>What&rsquo;s the difference between the <code>Id</code> function and the <code>Forever</code> function?</p>
+</question><answer><p><code>Id</code> returns with a value, but <code>Forever</code> just keeps on running.</p>
+</answer></fram><fram ord='18'><ord>18</ord><question><p>Yes, the pocket universe stays alive as long as the function it was started with keeps running.</p>
+
+<p>How long will this pocket universe remain alive?</p>
+
+<pre><code>&gt; SleepyPid = spawn(fun() -&gt; 
+                      timer:sleep(timer:seconds(15)) 
+                    end).
+</code></pre>
+</question><answer><p>15 seconds, if the function names can be trusted.</p>
+
+<pre><code>&gt; is_process_alive(SleepyPid).
+true
+&gt; timer:sleep(timer:seconds(15)).
+ok
+&gt; is_process_alive(SleepyPid).
+false
+</code></pre>
+</answer></fram><fram ord='19'><ord>19</ord><question><p>Let&rsquo;s print something to the screen.</p>
+
+<p>Will this do?</p>
+
+<pre><code>&gt; Print = fun Print(Thing) -&gt;
+            Erlang:display(Thing)
+          end.
+</code></pre>
+</question><answer><p>If the names of things can be trusted, then yes, it&rsquo;ll do.</p>
+</answer></fram><fram ord='20'><ord>20</ord><question><p>Can you try it out?</p>
+</question><answer><pre><code>&gt; Print("hello, world!").
+"hello, world!"
+true
+</code></pre>
+</answer></fram><fram ord='21'><ord>21</ord><question><p>Can you explain that?</p>
+</question><answer><p><code>"hello, world!"</code> was printed as expected, and then <code>true</code> was printed.</p>
+</answer></fram><fram ord='22'><ord>22</ord><question><p>Can you elaborate?</p>
+</question><answer><p>Can you give me a hint?</p>
+</answer></fram><fram ord='23'><ord>23</ord><question><p>Try to find out how <code>erlang:display()</code> works.</p>
+
+<p>What happens when you run</p>
+
+<pre><code>&gt; erlang:display(true).
+</code></pre>
+</question><answer><pre><code>true
+true
+</code></pre>
+</answer></fram><fram ord='24'><ord>24</ord><question><p>And</p>
+
+<pre><code>&gt; erlang:display(false).
+</code></pre>
+</question><answer><pre><code>false
+true
+</code></pre>
+</answer></fram><fram ord='25'><ord>25</ord><question><p>One more thing&hellip;</p>
+
+<pre><code>&gt; Result = erlang:display("something else").
+</code></pre>
+
+<p>What is the value of <code>Result</code>?</p>
+</question><answer><pre><code>&gt; Result.
+true
+</code></pre>
+</answer></fram><fram ord='26'><ord>26</ord><question><p>Can you explain this behaviour now?</p>
+</question><answer><p><code>erlang:display()</code> displays its parameter on the screen, and then returns <code>true</code>.</p>
+
+<p>The Erlang shell <code>erl</code> prints the last returned value, so we see <code>true</code> printed out.</p>
+</answer></fram><fram ord='27'><ord>27</ord><question><p>Exactly.</p>
+
+<p>In that case, what will happen when we run this code?</p>
+
+<pre><code>&gt; V = spawn(fun() -&gt; 
+              Print("hello, pocket universe!")
+            end).
+</code></pre>
+</question><answer><pre><code>"hello, pocket universe!"
+&lt;0.46.0&gt;
+</code></pre>
+</answer></fram><fram ord='28'><ord>28</ord><question><p>And what will <code>V</code> be equal to?</p>
+</question><answer><pre><code>&gt; V.
+&lt;0.46.0&gt;
+</code></pre>
+
+<p>The Pocket-universe ID of our freshly <code>spawn</code>ed universe.</p>
+</answer></fram><fram ord='29'><ord>29</ord><question><p>Will this universe be alive?</p>
+</question><answer><p>No.</p>
+</answer></fram><fram ord='30'><ord>30</ord><question><p>Can you check?</p>
+</question><answer><pre><code>&gt; is_process_alive(V).
+false
+</code></pre>
+
+<p>As expected.</p>
+</answer></fram><fram ord='31'><ord>31</ord><question><p>What do you think this function will do?</p>
+
+<pre><code>&gt; PrintForever = fun PrintForever(X) -&gt;
+                   erlang:display(X),
+                   PrintForever(X)
+                 end.
+</code></pre>
+</question><answer><p>It seems it will print something forever.</p>
+</answer></fram><fram ord='32'><ord>32</ord><question><p>Would you like to run it?</p>
+</question><answer><p>Uh, here goes:</p>
+
+<pre><code>PrintForever("hello").
+"hello"
+"hello"
+"hello"
+"hello"
+"hello"
+"hello"
+...
+</code></pre>
+</answer></fram><fram ord='33'><ord>33</ord><question><p>You seem to be stuck.</p>
+</question><answer><p>Yes. This is the same as the non-terminating function, but worse on the eyes.</p>
+</answer></fram><fram ord='34'><ord>34</ord><question><p>Do you remember how to exit the shell?</p>
+</question><answer><p>Yes, using <code>Ctrl-C Ctrl-C</code>:</p>
+
+<pre><code>"hello"
+"hello"
+"hello"
+
+BREAK: (a)bort (c)ontinue (p)roc info (i)nfo (l)oaded
+       (v)ersion (k)ill (D)b-tables (d)istribution
+$
+</code></pre>
+</answer></fram><fram ord='35'><ord>35</ord><question><p>Let&rsquo;s turn down the volume. Open up the <code>erl</code> shell again and try the following:</p>
+
+<pre><code>&gt; PrintForever = fun PrintForever(X, Interval) -&gt;
+                   erlang:display(X),
+                   timer:sleep(timer:seconds(Interval)),    
+                   PrintForever(X, Interval)
+                 end.
+</code></pre>
+
+<p>What do you expect to happen when you run this function?</p>
+</question><answer><p>The same thing that just happened: the shell will get stuck,<br/>
+but a new line of output will appear only every <code>Interval</code> seconds.</p>
+</answer></fram><fram ord='36'><ord>36</ord><question><p>Would you like to run it?</p>
+</question><answer><p>I&rsquo;d rather not have to quit the shell and re-open it again.</p>
+</answer></fram><fram ord='37'><ord>37</ord><question><p>What if you ran it in its own pocket universe?</p>
+</question><answer><p>Let&rsquo;s try it.</p>
+
+<pre><code>&gt; spawn(fun() -&gt;
+          PrintForever("hello_pocket_universe", 10)
+        end).
+"hello_pocket_universe"
+&lt;0.36.0&gt;
+</code></pre>
+</answer></fram><fram ord='38'><ord>38</ord><question><p>Wait 10 seconds more&hellip;</p>
+</question><answer><pre><code>"hello_pocket_universe"
+</code></pre>
+</answer></fram><fram ord='39'><ord>39</ord><question><p>Okay, and can you use your shell? Try</p>
+
+<pre><code>&gt; 2 + 2.
+</code></pre>
+</question><answer><pre><code>&gt;2 + 2.
+4
+</code></pre>
+</answer></fram><fram ord='40'><ord>40</ord><question><p>Now, let&rsquo;s launch a bunch more universes!</p>
+</question><answer><p>This will make the shell unusable, eventually&hellip;</p>
+</answer></fram><fram ord='41'><ord>41</ord><question><p>Yes, but it&rsquo;ll be fun!</p>
+</question><answer><p>Okay, how would we launch many universes in a concise manner?</p>
+
+<p>I don&rsquo;t want to type too much.</p>
+</answer></fram><fram ord='42'><ord>42</ord><question><p>Then we must take a quick detour through Erlang syntax.</p>
+
+<p>Try the following code in the shell:</p>
+
+<pre><code>&gt; [ {hello, N} || N &lt;- [1,2,3,4,5] ].
+</code></pre>
+</question><answer><pre><code>&gt; [ {hello, N} || N &lt;- [1,2,3,4,5] ].
+[{hello,1},
+ {hello,2},
+ {hello,3},
+ {hello,4},
+ {hello,5}]
+</code></pre>
+
+<p>Well, it worked. But I don&rsquo;t know what it means.</p>
+</answer></fram><fram ord='43'><ord>43</ord><question><p>Let&rsquo;s break it down. <code>hello</code> is an <em>atom</em>. It&rsquo;s like a string, but more
+lightweight.  If an atom contains no spaces or special characters, you can
+write it without quotes.</p>
+
+<p>If it <em>does</em> contain special characters, you will need to wrap the entire atom
+in single quotes. Underscores don&rsquo;t count as special characters.</p>
+
+<pre><code>&gt; hello.
+hello
+
+&gt; 'hello world!'.
+'hello world!'
+</code></pre>
+</question><answer><pre><code>&gt; another_atom.
+another_atom.
+
+&gt; 'email@address.com'.
+'email@address.com'
+</code></pre>
+
+<p>Makes sense.</p>
+</answer></fram><fram ord='44'><ord>44</ord><question><p>Those things surrounded by <code>{</code> and <code>}</code>, and separated by <code>,</code>
+are called <em>tuples</em>.
+Think of them as simply ad-hoc packages of data.</p>
+
+<pre><code>&gt; {a, tuple, with, five, atoms}.
+{a,tuple,with,five,atoms}
+
+&gt; {1,2,3,4,5}.
+{1,2,3,4,5}
+</code></pre>
+</question><answer><p>Okay.</p>
+</answer></fram><fram ord='45'><ord>45</ord><question><p>Are these tuples?</p>
+
+<pre><code>&gt; {}.
+&gt; {1,2,3,potato}.
+&gt; {1,2,3,potato, fun(X) -&gt; X + 5 end}.
+</code></pre>
+</question><answer><p>I think so. The last one looks like it contains a function.</p>
+
+<pre><code>&gt; {1,2,3,potato, fun(X) -&gt; X + 5 end}.
+{1,2,3,potato,#Fun&lt;erl_eval.6.50752066&gt;}
+</code></pre>
+</answer></fram><fram ord='46'><ord>46</ord><question><p>Yes. Anything can be packed into a tuple, even Pocket-universe Ids.</p>
+
+<p>Now, <em>lists</em> look like tuples, except they&rsquo;re surrounded by <code>[</code> and <code>]</code>.</p>
+
+<p>Is this a list?</p>
+
+<pre><code>&gt; [1,2,3,4]
+</code></pre>
+</question><answer><p>Yes, by your definition.</p>
+
+<pre><code>&gt; [1,2,3,4].
+[1,2,3,4]
+</code></pre>
+</answer></fram><fram ord='47'><ord>47</ord><question><p>Are all of these lists as well?</p>
+
+<pre><code>&gt; [].
+&gt; [1].
+&gt; [1,potato, fun(X) -&gt; X + 1 end].
+</code></pre>
+</question><answer><p>By your definition, yes.</p>
+</answer></fram><fram ord='48'><ord>48</ord><question><p>Correct. Lists are much like tuples on the surface, but we can perform many
+more interesting operations on lists.<sup>&dagger;</sup></p>
+
+<hr />
+
+<p><small><sup>&dagger;</sup>See <em>The Little Schemer</em> by Friedman and Felleisen
+(MIT Press) for a thorough course on lists.
+</small></p>
+</question><answer><p>Okay, does this have anything to do with that line of code you&rsquo;re explaining?</p>
+</answer></fram><fram ord='49'><ord>49</ord><question><p>Yes. Let&rsquo;s take a look at that line again.</p>
+
+<pre><code>&gt; [ {hello, N} || N &lt;- [1,2,3,4,5] ].
+</code></pre>
+
+<p>This is called a <em>list comprehension</em>. It is a concise way of creating a list.</p>
+
+<p>Do you recognize the Erlang data structures?</p>
+</question><answer><p>It looks like there&rsquo;s a <em>list</em> on the outside, a <em>tuple</em>, a double-pipe <code>||</code>,
+a variable, a left-arrow <code>&lt;-</code>, and another list on the inside.</p>
+</answer></fram><fram ord='50'><ord>50</ord><question><p>Correct, when you see <code>||</code> and <code>&lt;-</code>, you can assume you&rsquo;re in the presence of
+a list comprehension.</p>
+
+<p>Read <code>||</code> as <em>for every</em> and <code>&lt;-</code> as <em>in</em>. Read all other data as-is.</p>
+</question><answer><p>The tuple <code>{hello, N}</code> <em>for every</em> <code>N</code> <em>in</em> the list <code>[1,2,3,4,5]</code>.</p>
+</answer></fram><fram ord='51'><ord>51</ord><question><p>Correct. Let&rsquo;s do one more.</p>
+
+<p>Read this, and describe what it returns.</p>
+
+<pre><code>&gt; [{N, math:pow(2,N)} || N &lt;- [1,2,3,4,5,6,7,8,9,10]].
+</code></pre>
+</question><answer><p>The tuple <code>{N, 2 to the power of N}</code> <em>for every</em> <code>N</code> <em>in</em> between 1 and 10,
+inclusive.</p>
+
+<p>This returns the first 10 powers of two, preceded by the exponent.</p>
+</answer></fram><fram ord='52'><ord>52</ord><question><p>Don&rsquo;t you wish there was a nicer way to describe the range of numbers we want
+to use as the source of <code>N</code>?</p>
+</question><answer><p>I do.</p>
+</answer></fram><fram ord='53'><ord>53</ord><question><p>This will likely do what you expect:</p>
+
+<pre><code>&gt; lists:seq(1, 10).
+</code></pre>
+</question><answer><pre><code>&gt; lists:seq(1, 10).
+[1,2,3,4,5,6,7,8,9,10]
+</code></pre>
+</answer></fram><fram ord='54'><ord>54</ord><question><p>Can you generate the first 100 powers of two?</p>
+</question><answer><pre><code>&gt; [ math:pow(2, N) || N &lt;- lists:seq(1,100) ].
+[2.0,4.0,8.0,16.0,32.0,64.0,128.0,256.0,512.0,1024.0,2048.0,
+ 4096.0,8192.0,16384.0,32768.0,65536.0,131072.0,262144.0,
+ 524288.0,1048576.0,2097152.0,4194304.0,8388608.0,16777216.0,
+ 33554432.0,67108864.0,134217728.0,268435456.0,536870912.0|...]
+</code></pre>
+</answer></fram><fram ord='55'><ord>55</ord><question><p>Now we can return to the task of spawning a whole swarm of pocket universes.</p>
+</question><answer><p>How many is reasonable?</p>
+</answer></fram><fram ord='56'><ord>56</ord><question><p>A lot more than you expect. Let&rsquo;s try ten thousand for starters.</p>
+</question><answer><p>What will we want running in our pocket universe?</p>
+</answer></fram><fram ord='57'><ord>57</ord><question><p>Let&rsquo;s revisit our <code>PrintForever</code> function.</p>
+
+<pre><code>&gt; PrintForever = fun PrintForever(X, Interval) -&gt;
+                   erlang:display(X),
+                   timer:sleep(timer:seconds(Interval)),    
+                   PrintForever(X, Interval)
+                 end.
+</code></pre>
+
+<p>Can you make each pocket universe print a different number?</p>
+</question><answer><p>Yes. Here goes.</p>
+
+<pre><code>&gt; [ spawn(fun() -&gt; PrintForever(N,60) end) || N &lt;- lists:seq(1,1*1000*1000) ].
+</code></pre>
+</answer></fram><fram ord='58'><ord>58</ord><question><p>Wait!</p>
+
+<p>Before you run this and inevitably fill your screen with numbers,
+can you read that list comprehension out loud?</p>
+</question><answer><p>Spawn a universe running the function <code>PrintForever(N,1)</code> for every N
+in the list 1..10000.</p>
+</answer></fram><fram ord='59'><ord>59</ord><question><p>Let&rsquo;s do it!</p>
+</question><answer><p>I see a lot on the screen.</p>
+</answer></fram><fram ord='60'><ord>60</ord><question><p>Yes. All those pocket universes are running <em>concurrently</em>.  Each universe
+performs its own work, completely oblivous to what the others are doing.</p>
+</question><answer><p>How many can I run, realistically?</p>
+</answer></fram><fram ord='61'><ord>61</ord><question><p>Launch the Erlang shell with <code>erl +P 134217727</code> and see if you can
+hit that limit.</p>
+
+<p>You&rsquo;ll want to spawn <code>PrintForever</code> with a higher interval, so
+that outputting to the Erlang shell doesn&rsquo;t become a bottleneck.</p>
+</question><answer><p>Okay, I&rsquo;ll experiment. See you next time!</p>
+</answer></fram>
+      </article>
+      <footer>
+<a rel="license" 
+   href="http://creativecommons.org/licenses/by-sa/4.0/"
+><img alt="Creative Commons License" 
+      style="border-width:0" 
+      src="https://i.creativecommons.org/l/by-sa/4.0/80x15.png" /></a>
+This work is licensed under a
+<a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative
+Commons Attribution-ShareAlike 4.0 International License</a>
+<span>&nbsp;|&nbsp;</span>
+<span>&copy 2017 <a href="https://github.com/pzel">Simon Zelazny</a></span>
+<span>&nbsp;|&nbsp;</span>
+<span>Made with <a href="https://github.com/pzel/mondo">Mondo</a>.</span>
+
+      </footer>
+      <script type="text/javascript">
+window.s = {};
+s.interactive = true;
+
+s.focus = function(fram_idx, dir) {
+  var focusedFram = s.a[fram_idx];
+  var previousFram = (s.a[fram_idx-1] || false);
+  s.a.map(function(el){removeClasses(el, ["focused", "previous"])});
+  s.a.slice(0,max(0,fram_idx))
+    .map(function(beforeFram){
+      addClass(beforeFram, "revealed");
+      removeClass(beforeFram, "hidden")});
+  if (dir == "down") {addClass(previousFram, "previous")};
+  s.a.slice(fram_idx, -1)
+    .map(function(afterFram){addClass(afterFram, "hidden")});
+  addClass(focusedFram, "focused");
+  removeClasses(focusedFram, ["previous","revealed","hidden"]);
+  s.keepInView(focusedFram, previousFram);
+}
+
+s.focusNext = function(){
+  if (s.fram  >= s.a.length-1) {} // last el: noop 
+  else {s.fram += 1; s.focus(s.fram, "down")}
+}
+
+s.focusPrevious = function(){
+  if (s.fram <= 0) {}
+  else {s.fram -= 1; s.focus(s.fram, "up") }
+}
+
+s.keepInView = function(fram, prevFram) {
+  if (!prevFram) { return true } // first fram on page
+  else {
+    var rect = fram.getBoundingClientRect();
+    /* To keep prev visible on top:
+       var prev_rect = prevFram.getBoundingClientRect();
+       window.scrollTo(0, prev_rect.top + window.pageYOffset); */
+    targetTop = rect.bottom + window.pageYOffset - (window.innerHeight * .9);
+    if (rect.bottom === 0) {window.scrollTo(0, window.pageYOffset) }
+    else {window.scrollTo(0, targetTop)}
+  }
+}
+
+s.disable = function(){
+  s.interactive = false;
+  s.a.map(function(el){removeClasses(
+    el, ["focused", "hidden", "previous", "revealed"])});
+}
+
+s.setup = function() {
+  var x = document.querySelectorAll("fram");
+  s.a = Array.prototype.slice.call(x);
+  s.a.push(mkSentinel());
+  s.a.map(function(el){ addClass(el, "hidden") });
+  s.fram = 0;
+  s.focus(s.fram);
+}
+
+s.setup();
+
+var el = document;
+el.onkeydown = function(evt) {
+  if (s.interactive === true) {
+    evt = evt || window.event;
+    switch (evt.keyCode) {
+    case 27: // Escape
+      s.disable(); return false; break;
+    case 78: // [N]ext
+    case 40: // Down
+      s.focusNext(); return false; break;
+    case 80: // [P]revious
+    case 38: // Up
+      s.focusPrevious(); return false; break;
+    }
+  }
+};
+
+function removeClasses(el, cs){cs.map(function(c){ removeClass(el, c) })}
+function removeClass(el,c){el.className = el.className.replace(c, "")}
+function addClass(el, c){removeClass(el, c); el.className += (" "+c) }
+function max(a,b) { if (a > b) { return(a) } else { return(b) }};
+function mkSentinel() { var el= document.createElement('div'); el.innerHTML='<div></div>'; return el.firstChild }
+
+      </script>
+    </body>
+</html>

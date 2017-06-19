@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Bits of Erlang, alpha release :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 600px) {img { width: 100%; }}
+@media(min-width: 600px) {#content { width: 42em; margin: 0 auto }}
+body { font-size: 140%; font-family: "Georgia", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: "Helvetica", "Arial", sans; text-align: left; }
+blockquote { border-left: 1px solid #ddd; padding-left: 2em;}
+
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 3em; }
+header img {float: left; margin: 1em 1em 0 0; width:15%; border: 1px solid #aaa; }
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+.post-list { clear: both; margin: 3em 0;}
+.post-list li { margin-bottom: 1em; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { float: right; }
+footer { text-align: justify; font-size: 90%; clear: both; padding-top: 1em;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body pre code {border: none;}
+.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #ffffdf; overflow-x: auto;}
+.post-body { text-align: justify; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Bits of Erlang, alpha release</h1>
+  <small class="post-date">2017-06-19</small>
+  <div class="heading">
+    <p>An experiment in Socratic education </p>
+  </div>
+  <p>Long ago in 2015, at LambdaCon in Bologna, I gave a hands-on workshop titled
+<em>An Introduction to Erlang/OTP</em>. It was, in truth, a largely improvised
+code-jam around four fundamental Erlang concepts:</p>
+
+<ol>
+<li>Concurrency</li>
+<li>Process isolation</li>
+<li>Message passing</li>
+<li>Error propagation</li>
+</ol>
+
+
+<p>I extracted these four from <a href="http://erlang.org/download/armstrong_thesis_2003.pdf">Joe Armstrong's PhD thesis</a>, as I felt they
+were the most salient characteristics of the language and platform.</p>
+
+<p>The code-jam idea seemed sound, and promised some engagement from a live
+audience, so I gave it one more go at the Erlang Solutions office in Krakow,
+when we received a visit from a <a href="https://www.syntaxleiden.nl/">CS Student organization from Holland</a>.
+They seemed to like it.</p>
+
+<p>The follow-up plan was to publish the code-jam and tutorial for the benefit of
+the original workshop attendees, the students, and anyone interested in Erlang,
+but a laptop change or two resulted in all the code getting lost.</p>
+
+<p>I decided against recording a screencast, sharing the belief that <a href="https://simplystatistics.org/2017/06/13/the-future-of-education-is-plain-text/">the future
+of education is plain text</a>. The Socratic approach taken by the authors of
+the <em><a href="https://mitpress.mit.edu/books/little-schemer">Little Schemer</a></em> series of books seemed like a good compromise between
+interactivity and static textuality.</p>
+
+<p>After two years of messing around, I'm releasing what I have. I humbly ask for
+constructive feedback and suggestions.</p>
+
+<h2>Click here for the tutorial: <br/><a href="/Bits-of-erlang-chapter-1-concurrency.html">Bits of Erlang, chatper 1: Concurrency</a></h2>
+
+<h2>Open questions</h2>
+
+<p>I'm simply releasing what I have so far, but many questions remain:</p>
+
+<ol>
+<li><p>Is plain Erlang shell syntax the way to go? The whole <code>F = fun F() -&gt;</code>
+dance, along with single-use variables, and the need to quit and reopen the
+shell, makes the exercise rather painful in the long run.</p></li>
+<li><p>If we go with compiled Erlang modules, we'll have to explain the boilerplate:
+<code>-export()</code>s, <code>c()</code>ompiling code, and having to edit the code in a separate
+environment from the shell itself. This is how I did the live-coding.</p></li>
+<li><p>We could just go with Elixir, but then we face the problem of having to
+include module definitions everywhere, which obfuscates the
+essentials. There may be an elegant way of handling this.</p></li>
+<li><p>Should the whole thing be slower-paced? There is basically <strong>no</strong>
+explanation of Erlang sytnax.. Perhaps a chapter 0, introducing sytnax and
+basic data structures (lists, tuples, atoms, numbers) is in order?</p></li>
+</ol>
+
+
+<p>If you have any thoughts on these or other concerns, please reach out to me via
+email.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html">⇦Encrypted hledger with Emacs and GnuPG</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2017 <a href="/about.html">Simon Zelazny</a></span>
+  </div>
+  <div id="rfooter">
+    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

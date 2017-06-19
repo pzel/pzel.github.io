@@ -1,10 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
-    <title>Simon Zelazny&#39;s Blog</title>
+    <title>Simon Zelazny's Blog</title>
     <description></description>
     <link>http://pzel.github.io</link>
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
+    
+      <item>
+        <title>Bits of Erlang, alpha release</title>
+        <description>An experiment in Socratic education</description>
+        <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
+      </item>
     
       <item>
         <title>Encrypted hledger with Emacs and GnuPG</title>
