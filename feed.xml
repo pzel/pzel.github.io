@@ -7,6 +7,14 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Bits of Erlang, alpha release</title>
+        <description>An experiment in Socratic education</description>
+        <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
+      </item>
+    
+      <item>
         <title>Encrypted hledger with Emacs and GnuPG</title>
         <description>A reasonably seamless way to work with encrypted ledger files</description>
         <pubDate>Mon, 18 Jul 2016 00:00:00 +0200</pubDate>
