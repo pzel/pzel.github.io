@@ -1,0 +1,222 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Pair Programming and Happiness :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 600px) {img { width: 100%; }}
+@media(min-width: 600px) {#content { width: 42em; margin: 0em 4em; }}
+body { font-size: 110%; font-family: serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: sans-serif; text-align: left; }
+blockquote { border-left: 1px solid #ddd; padding-left: 2em;}
+code { font-size: 120%; }
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 3em; }
+header img {float: left; margin: 1em 1em 0 0; width:15%; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+.post-list { clear: both; margin: 3em 0;}
+.post-list li { margin-bottom: 1em; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { float: right; }
+footer { text-align: justify; font-size: 90%; clear: both; padding-top: 1em;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body pre code {border: none;}
+.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #fffff8; overflow-x: auto;}
+.post-body { text-align: left; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Pair Programming and Happiness</h1>
+  <small class="post-date">2018-01-27</small>
+  <div class="heading">
+    <p>Perhaps there is a way to get it right </p>
+  </div>
+  <h2>What this post is about</h2>
+
+<p>Every time an article about pair programming surfaces in one of the Internet's
+watering holes, I am surprised by the amount of negativity surrounding the
+practice.</p>
+
+<p>In this post, I suggest two modifications to "standard" pair programming, which
+should make it more enjoyable, even for introverts and skilled experts.</p>
+
+<h2>People complain</h2>
+
+<p>Reading the top top-rated comments in <a href="https://lobste.rs/s/wyd3di/do_you_pair_program">one of many threads on
+pairing</a>, one sees critical comments like these:</p>
+
+<blockquote><p>I can’t stand pair programming, and I simply would not work somewhere that required it.</p>
+
+<p>Pair programming (..)? Super not a fan.</p>
+
+<p>I’m personally strongly against it.</p></blockquote>
+
+<p>While I haven't done a through qualitative study on the sentiments expressed,
+one of the main arguments against pairing seems to be the fact that programmers
+don't enjoy being forced to socialize against their will.
+This forced socialization entails things like:</p>
+
+<ul>
+<li>sharing the keyboard</li>
+<li>sharing editor settings</li>
+<li>close physical proximity to the other member of the pair</li>
+</ul>
+
+
+<p>The other counterargument centers around the difficulties in matching skill and
+experience levels between the two members of a pair. Here, the following come up:</p>
+
+<ul>
+<li>two experienced programmers do more work separately then when pairing</li>
+<li>two juniors will not learn anything from each other</li>
+<li>it makes sense to pair juniors with seniors only during the onboarding period</li>
+</ul>
+
+
+<p>This skills-based barrier to pleasurable and productive pairing is indeed more
+serious, but I have seen it overcome with a small shift in attitude and
+approach.</p>
+
+<p>Below, I'd like to present the paring setup and techniques that I've used (and
+seen used) in the last few years. I believe that they alleviate some of the
+misgivings about pair programming mentioned above.</p>
+
+<h2>Introverts, separate!</h2>
+
+<p>I've done most my professional work remotely. A lot of the code I've
+(co-)developed was written in a pair-programming+TDD setting, <strong>remotely</strong>.</p>
+
+<p>How does one effectively pair-program when not at the same desk? I'm not the
+first person to recommend the classic <code>ssh + tmux</code> solution. I believe
+this solution is <strong>strictly better</strong> than pair programming at one desk.</p>
+
+<p>It works like this:</p>
+
+<ol>
+<li>The team sets up a shared development box, accessible by ssh/mosh</li>
+<li>A pair of team members logs in, <code>tmux a</code>ttaches to a shared terminal</li>
+<li>They run <del>vim</del> emacs inside</li>
+<li>They use a separate app for audio. (Mumble, Skype, Slack calls, etc.)</li>
+</ol>
+
+
+<p>This solution is so good, that I've even used it while working in the same room
+as the pairing partner (sans voice app, of course). It provides both parties
+with a <a href="https://en.wikipedia.org/wiki/Joint_attention">shared locus of attention</a>, while not exposing them to physical
+discomfort.</p>
+
+<p>While this solution clearly eliminates physical issues around pairing, the
+problem of a shared programming environment remains. As pair programming
+requires practitioners to be fluent with the tools they use day-to-day,
+fundamentally there will always be a need for compromise on this front.</p>
+
+<p>Practially, however, most backend programmers will be familiar with either vim
+or emacs—a judicous use of toggles for switching between setting groups
+should sort out personal quirks. (For example: at work we bind <code>&lt;F4&gt;</code> to switch
+emacs from vanilla behavior to <a href="https://www.emacswiki.org/emacs/Evil">evil-mode</a>. It works well enough.)</p>
+
+<h2>Jamming is conversation</h2>
+
+<p>The other issue is related to skill levels. Simplifying skill levels to a
+binary of <em>junior</em> and <em>senior</em>, we get 3 possible pairings: both juniors, both
+seniors, and junior+senior.</p>
+
+<p>The junior+senior combination seems to be the most highly regarded use case for
+pair programming, even among the detractors. It makes sense that putting the
+less experienced in close quarters with a seasoned master should benefit the
+junior. Even in these cases, I can imagine that some seniors may feel that
+their time isn't being put to good use, while some juniors might get
+overwhelmed watching their mentor work with great efficiency. This leads to
+fatigue and 'just watching' as the other person works—definitely a waste of
+both the devs' time and the employer's money.</p>
+
+<p>The key to getting the most our of pair programming is to <strong>A</strong>lways <strong>B</strong>e
+<strong>C</strong>oding. The common pairing methodology of driver and navigator switching
+roles every 30 minutes is tedious and wasteful. I believe that turning the
+coding session into a jam session is the key to making pairing work.</p>
+
+<p>How to keep both parties engaged and coding? If you're applying TDD, it's easy:
+just do ping-pong pairing. Develeloper A writes a test. Developer B writes
+enough of an implementation to make the test pass, then continues with another
+test. Developer A picks up, and modifies the implementation to meet the demands.</p>
+
+<p>This kind of call-and-response style of development keeps both parties focused
+on the code, talking and thinking about the task at hand. While TDD works most
+of the time, there exist some issues which cannot be simply reduced to a test
+case. Here, still, the challenge-and-reply approach does wonders for code
+quality and developer engagement. (For example: one developer might challenge
+the other by saying: "There is a more efficient algorithm", or "I can break
+this mechanism like so. How will you fix it?", etc.)</p>
+
+<p>By approaching pair programming as a conversation, we can get more mileage out
+of any combination of skill levels. For two juniors, the back and forth may
+touch on unit test design or knowledge of the system. Two seniors pairing will
+get opportunities to critically examine and revise system architecture or
+coding standards, but the possibilities for jamming are endless. They may even
+involve betting money (sic!).</p>
+
+<h2>Wrapping up</h2>
+
+<p>Above, I described two tweaks to pair programming practice that, in my
+experience, make it much more enjoyable. To summarize:</p>
+
+<ul>
+<li>A remote shared workstation may alleviate the physical discomfort of pairing</li>
+<li>Call-and-response jamming will keep both devs engaged, learning, and focued
+on the code, regardless of skill levels</li>
+</ul>
+
+
+<p>This concludes my humble contribution to the ongoing conversation around pair
+programming.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2017/06/19/Bits-of-erlang-alpha-release.html">⇦Bits of Erlang, alpha release</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a></span>
+  </div>
+  <div id="rfooter">
+    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

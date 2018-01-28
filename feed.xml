@@ -7,9 +7,17 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Pair Programming and Happiness</title>
+        <description>Perhaps there is a way to get it right</description>
+        <pubDate>Sat, 27 Jan 2018 00:00:00 -0800</pubDate>
+        <link>http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</guid>
+      </item>
+    
+      <item>
         <title>Bits of Erlang, alpha release</title>
         <description>An experiment in Socratic education</description>
-        <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
+        <pubDate>Mon, 19 Jun 2017 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
       </item>
@@ -17,7 +25,7 @@
       <item>
         <title>Encrypted hledger with Emacs and GnuPG</title>
         <description>A reasonably seamless way to work with encrypted ledger files</description>
-        <pubDate>Mon, 18 Jul 2016 00:00:00 +0200</pubDate>
+        <pubDate>Mon, 18 Jul 2016 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</guid>
       </item>
@@ -25,7 +33,7 @@
       <item>
         <title>Lorem Ipsum in Polish</title>
         <description>Minimum viable Markov chains in Haskell</description>
-        <pubDate>Sat, 27 Feb 2016 00:00:00 +0100</pubDate>
+        <pubDate>Sat, 27 Feb 2016 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/2016/02/27/Lorem-Ipsum-in-Polish.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2016/02/27/Lorem-Ipsum-in-Polish.html</guid>
       </item>
@@ -33,7 +41,7 @@
       <item>
         <title>Lowbrow Haskell: A Quick Tetris Clone</title>
         <description>A short overview of a TTY retro game re-implemented in Haskell.</description>
-        <pubDate>Mon, 18 Jan 2016 00:00:00 +0100</pubDate>
+        <pubDate>Mon, 18 Jan 2016 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html</guid>
       </item>
