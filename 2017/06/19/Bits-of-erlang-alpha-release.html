@@ -7,21 +7,28 @@
     <title>Bits of Erlang, alpha release :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
-    <style type="text/css">@media(max-width: 600px) {img { width: 100%; }}
-@media(min-width: 600px) {#content { width: 42em; margin: 0em 4em; }}
+    <style type="text/css">@media(max-width: 800px) {
+  img { width: 100%; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
 body { font-size: 110%; font-family: serif; padding: 2px; margin: 0; line-height: 1.4;}
 h1,h2,h3,h4,h5 { font-family: sans-serif; text-align: left; }
 blockquote { border-left: 1px solid #ddd; padding-left: 2em;}
-code { font-size: 120%; }
 a{ color: black; }
 a:visited{ color: #441f66; }
 h1#main-title { margin-bottom:0; }
-header { margin-bottom: 3em; }
+header { margin-bottom: 2em; }
 header img {float: left; margin: 1em 1em 0 0; width:15%; border: 1px solid black;}
 header h3 { font-style: italic; margin: 0; }
 header h1, header h3 { display: inline-block;}
-.post-list { clear: both; margin: 3em 0;}
-.post-list li { margin-bottom: 1em; }
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
 .post-list li .outline { margin: 0; }
 img.inset { float: right; padding-left: 2em;}
 div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
@@ -30,8 +37,8 @@ div.post-nav > div.next { text-align:right;}
 div.post-nav > div.up { text-align:center;}
 footer { border-top: 1px #eee solid; }
 #lfooter { float: left; }
-#rfooter { float: right; }
-footer { text-align: justify; font-size: 90%; clear: both; padding-top: 1em;}
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 .post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
 .post-body .post-date { font-style:italic; }
 .post-body > h1 { margin-bottom: 0; }
@@ -120,10 +127,10 @@ email.</p>
     <div>&nbsp;</div>
     <footer>
   <div id="lfooter">
-    <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a></span>
+    <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a> </span>
   </div>
   <div id="rfooter">
-    | <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
     | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
     | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
     | <span class='feed'><a href="/feed.xml">RSS</a></span>
@@ -131,6 +138,7 @@ email.</p>
     <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
   </span>
   </div>
+  <span style="clear:both">&nbsp;</span>
 </footer>
 
   </div>

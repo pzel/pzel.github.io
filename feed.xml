@@ -7,6 +7,14 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>cowboy_req:reply works by side-effect!</title>
+        <description></description>
+        <pubDate>Tue, 30 Jan 2018 00:00:00 -0800</pubDate>
+        <link>http://pzel.github.io/2018/01/30/Cowboy-replies.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2018/01/30/Cowboy-replies.html</guid>
+      </item>
+    
+      <item>
         <title>Pair Programming and Happiness</title>
         <description>Perhaps there is a way to get it right</description>
         <pubDate>Sat, 27 Jan 2018 00:00:00 -0800</pubDate>
