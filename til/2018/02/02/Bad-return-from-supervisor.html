@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
-    <title>Index :: Simon Zelazny's Blog</title>
+    <title>Mysterious 'bad_return' from supervisor :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
@@ -49,70 +49,79 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 </style>
   </head>
   <body>
-    <div id="content" class="clearfix"> <header>
-  <img src="/img/simon_bw.png">
-  <h1 id='main-title'>Simon Zelazny's Blog</h1>
-  <h3>Notes on programming, culture, and language</h3>
-</header>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Mysterious 'bad_return' from supervisor</h1>
+  <small class="post-date">Today I learned (2018-02-02)</small>
+  <div class="heading"> </div>
+  <p>I was recently evaulating this <a href="https://github.com/tkyshm/efluentc">erlang fluentd
+client</a> and got the following error when
+running <code>rebar3 ct</code>:</p>
 
-<div class="post-list">
-  <section id="programming">
-    <h3>Posts</h3>
-    <ul>
+<pre><code>%%% efluentc_SUITE ==&gt; {tc_auto_skip,
+ {failed,
+  {efluentc_SUITE,init_per_suite,
+   {'EXIT',
+    {{badmatch,
+      {error,
+       {efluentc,
+        {bad_return,
+         {{efluentc_app,start,[normal,[]]},
+          {'EXIT',
+           {noproc,
+            {gen_server,call,[efluentc_sup,{start_child,[0]},infinity]}}}}}}}},
+</code></pre>
+
+<p>What's a <code>bad_return</code>? It happens when the <code>init/1</code> function in a supervisor
+module returns an invalid <a href="http://erlang.org/doc/man/supervisor.html#Module:init-1">supervisor
+spec</a>. Still, the
+<a href="https://travis-ci.org/tkyshm/efluentc">project's Travis page</a> shows the build
+as green! What gives?</p>
+
+<p>It turns out that while the version of Erlang that I had been running, 17.5,
+supports maps, it does <strong>not</strong> support the relatively new map-based supervisor
+spec API.</p>
+
+<p>This spec was causing the error:</p>
+
+<pre><code>%% Supervisor callbacks
+init([]) -&gt;
+    SupFlags = #{
+      strategy  =&gt; simple_one_for_one,
+      intensity =&gt; 1000,
+      period    =&gt; 3600
+    },
+
+    Child = #{
+      id       =&gt; 'efluentc_client',
+      start    =&gt; {'efluentc_client', start_link, []},
+      restart  =&gt; permanent,
+      shutdown =&gt; 2000,
+      type     =&gt; worker,
+      modules  =&gt; ['efluentc_client']
+    },
+
+    {ok, {SupFlags, [Child]}}.
+</code></pre>
+
+<h2>Conclusion</h2>
+
+<p>If you're having problems with supervisors crashing with <code>bad_return</code>s, check
+your Erlang/OTP version. Map-based specs were added in <a href="http://www.erlang.org/news/86">Erlang
+18</a>.</p>
+
+  <div class="post-nav">
+    <div class="prev">
       
+      <a href="/til/2018/01/30/Cowboy-replies.html">⇦cowboy_req:reply works by side-effect!</a>
       
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
       
-      
-      
-      <li><a href="/2018/01/27/Pair-programming-and-happiness.html">Pair Programming and Happiness</a>
-        <p class="outline">Perhaps there is a way to get it right</p>
-      </li>
-      
-      
-      
-      <li><a href="/2017/06/19/Bits-of-erlang-alpha-release.html">Bits of Erlang, alpha release</a>
-        <p class="outline">An experiment in Socratic education</p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html">Encrypted hledger with Emacs and GnuPG</a>
-        <p class="outline">A reasonably seamless way to work with encrypted ledger files</p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/02/27/Lorem-Ipsum-in-Polish.html">Lorem Ipsum in Polish</a>
-        <p class="outline">Minimum viable Markov chains in Haskell</p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html">Lowbrow Haskell: A Quick Tetris Clone</a>
-        <p class="outline">A short overview of a TTY retro game re-implemented in Haskell.</p>
-      </li>
-      
-      
-    </ul>
-  </section>
-  <section id="til">
-    <h3>Today I learned...</h3>
-    <ul>
-      
-      <li><a href="/til/2018/02/02/Bad-return-from-supervisor.html">
-	Mysterious 'bad_return' from supervisor</a>
-	| erlang, bad_return, supervisor | 2018-02-02
-      </li>
-      
-      <li><a href="/til/2018/01/30/Cowboy-replies.html">
-	cowboy_req:reply works by side-effect!</a>
-	| erlang, cowboy, crash | 2018-01-30
-      </li>
-      
-    </ul>
-  </section>
-</div>
-<footer>
+    </div>
+    <div>&nbsp;</div>
+    <footer>
   <div id="lfooter">
     <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a> </span>
   </div>
@@ -128,6 +137,8 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   <span style="clear:both">&nbsp;</span>
 </footer>
 
+  </div>
+</div>
 
     </div>
   </body>

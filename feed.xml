@@ -7,11 +7,19 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Mysterious 'bad_return' from supervisor</title>
+        <description></description>
+        <pubDate>Fri, 02 Feb 2018 00:00:00 -0800</pubDate>
+        <link>http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</guid>
+      </item>
+    
+      <item>
         <title>cowboy_req:reply works by side-effect!</title>
         <description></description>
         <pubDate>Tue, 30 Jan 2018 00:00:00 -0800</pubDate>
-        <link>http://pzel.github.io/2018/01/30/Cowboy-replies.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2018/01/30/Cowboy-replies.html</guid>
+        <link>http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</guid>
       </item>
     
       <item>
