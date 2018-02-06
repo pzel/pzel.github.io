@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Folding on cowboy_req :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { width: 100%; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 110%; font-family: serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: sans-serif; text-align: left; }
+blockquote { border-left: 1px solid #ddd; padding-left: 2em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; }
+header img {float: left; margin: 1em 1em 0 0; width:15%; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body pre code {border: none;}
+.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #fffff8; overflow-x: auto;}
+.post-body { text-align: left; }
+.tag { font-size: small; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Folding on cowboy_req</h1>
+  <small class="post-date">2018-02-05</small>
+  <div class="heading">
+    <p>Streamlined use of a streamlined API</p>
+    <p><span class="tags">
+  
+  <span class="tag">erlang</span>
+  
+  <span class="tag">cowboy</span>
+  
+  <span class="tag">fold</span>
+  
+</span>
+</p>
+  </div>
+  <h2>The problem</h2>
+
+<p>Pre-1.x versions of <a href="https://github.com/ninenines/cowboy">cowboy</a> have an elegant, minimalist, and uniform API for
+grabbing data out of <code>http_req</code> records. This API includes functions like:
+<code>cowboy_req:header/3</code>, <code>cowboy_req:qs_vals/1</code>, etc.</p>
+
+<p>Their elegance and uniformity come from the fact that they all return the tuple
+<code>{A, NewReq}</code>, such that <code>A</code> is the result of the function call, and <code>NewReq</code>
+is the potentially-transformed, new request record that you should use
+thereafter.</p>
+
+<p>Suppose your business requirements dictate that you have to gather a lot of
+data from a request, and then <code>do_something()</code> with it. What ends up happening
+is that your code begins to look like the following:</p>
+
+<pre><code>{OriginalIp, Req1} = cowboy_req:header(&lt;&lt;"x-forwarded-for"&gt;&gt;, Req, &lt;&lt;&gt;&gt;),
+{UserAgent, Req2} = cowboy_req:header(&lt;&lt;"user-agent"&gt;&gt;, Req1, &lt;&lt;&gt;&gt;),
+{QsVals, Req3} = cowboy_req:qs_vals(Req2),
+{Path, Req4} = cowboy_req:path(Req4),
+Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
+{ok, Reply, Req4}.
+</code></pre>
+
+<p>This gets tedious fast, and causes problems if you want to add or remove some
+of the intermediate steps. For example: removing the assignment to <code>Req2</code> would
+force you to rename all following variables, or leave a 'hole' and rename
+<code>Req1</code> to <code>Req2</code> in the previous line. Inelegant options, both.</p>
+
+<h2>The solution</h2>
+
+<p>As the wonderful <a href="http://www.cs.nott.ac.uk/~pszgmh/fold.pdf">tutorial on the universality and expresiveness of fold</a> will
+tell you, <code>fold</code> is the best function. We can clean up the above code and
+remove our useless assignments to numbered variables by using the following
+pattern.</p>
+
+<pre><code>{[OriginalIp, UserAgent, QsVals, Path], NewReq} =
+  fold_req([fun(R) -&gt; cowboy_req:header(&lt;&lt;"x-forwarded-for"&gt;&gt;, R, &lt;&lt;&gt;&gt;) end,
+            fun(R) -&gt; cowboy_req:header(&lt;&lt;"user-agent"&gt;&gt;, R, &lt;&lt;&gt;&gt;) end,
+            fun(R) -&gt; cowboy_req:qs_vals(R) end,
+            fun(R) -&gt; cowboy_req:path(R) end]
+            Req),
+Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
+{ok, Reply, NewReq}.
+</code></pre>
+
+<p>Yes, that's 2 extra lines of overhead, but the gain is that we don't have to
+keep track of the various <code>Req</code>s that abound in the code above.</p>
+
+<p>All of the functions in the chain are completely independent, and we can add or
+remove them as we see fit, without having to rearrange all the code.</p>
+
+<h2>The implemenation</h2>
+
+<p>The implementation of <code>fold_req/2</code> is trivial, so if you're up for the task,
+<strong>try to write it yourself, now</strong>.</p>
+
+<p>Scroll below to see my take on the solution.</p>
+
+<pre><code>----------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------- SPOILERS BELOW ---------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------
+</code></pre>
+
+<h2>The actual implementation</h2>
+
+<pre><code>fold_req(Funs, Req) -&gt; 
+    lists:foldr(fun fold_step/2, {[], Req}, Funs).
+
+fold_step(Fun, {Acc, Req}) -&gt;
+    {Val, NewReq} = Fun(Req),
+    {[Val|Acc], NewReq}.
+</code></pre>
+
+<p>Cheers!</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2018/02/02/Bad-return-from-supervisor.html">⇦Mysterious 'bad_return' from supervisor</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

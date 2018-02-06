@@ -46,12 +46,23 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 .post-body pre code {border: none;}
 .post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #fffff8; overflow-x: auto;}
 .post-body { text-align: left; }
+.tag { font-size: small; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
 </style>
   </head>
   <body>
     <div id="content" class="clearfix"> <div class="post-body">
   <h1>Mysterious 'bad_return' from supervisor</h1>
-  <small class="post-date">Today I learned (2018-02-02)</small>
+  <p class="post-date">Today I learned (2018-02-02)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">erlang</span>
+  
+  <span class="tag">bad_return</span>
+  
+  <span class="tag">supervisor</span>
+  
+</span>
+ </p>
   <div class="heading"> </div>
   <p>I was recently evaulating this <a href="https://github.com/tkyshm/efluentc">erlang fluentd
 client</a> and got the following error when
@@ -117,7 +128,8 @@ your Erlang/OTP version. Map-based specs were added in <a href="http://www.erlan
     </div>
     <div class="up"><a href="/">⇧Back to top</a></div>
     <div class="next">
-       &nbsp;
+      
+      <a href="/2018/02/05/Folding-on-cowboy_req.html">Folding on cowboy_req⇨</a>
       
     </div>
     <div>&nbsp;</div>

@@ -7,6 +7,14 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Folding on cowboy_req</title>
+        <description>Streamlined use of a streamlined API</description>
+        <pubDate>Mon, 05 Feb 2018 00:00:00 -0800</pubDate>
+        <link>http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</guid>
+      </item>
+    
+      <item>
         <title>Mysterious 'bad_return' from supervisor</title>
         <description></description>
         <pubDate>Fri, 02 Feb 2018 00:00:00 -0800</pubDate>

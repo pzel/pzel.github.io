@@ -46,12 +46,23 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 .post-body pre code {border: none;}
 .post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #fffff8; overflow-x: auto;}
 .post-body { text-align: left; }
+.tag { font-size: small; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
 </style>
   </head>
   <body>
     <div id="content" class="clearfix"> <div class="post-body">
   <h1>cowboy_req:reply works by side-effect!</h1>
-  <small class="post-date">Today I learned (2018-01-30)</small>
+  <p class="post-date">Today I learned (2018-01-30)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">erlang</span>
+  
+  <span class="tag">cowboy</span>
+  
+  <span class="tag">crash</span>
+  
+</span>
+ </p>
   <div class="heading"> </div>
   <p>Let's say you have the following <a href="https://github.com/ninenines/cowboy">cowboy</a> handler:</p>
 
