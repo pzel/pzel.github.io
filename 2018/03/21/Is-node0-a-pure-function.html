@@ -112,7 +112,9 @@ erlang:display(node()).
 'bye@kitty'
 </code></pre>
 
-<p>This demonstrates that <code>node/0</code> is <em>not</em> a pure function.</p>
+<p>This demonstrates that <code>node/0</code> is <em>not</em> a pure function, even in the
+loose-but-practical sense of always returning the same value during one run of
+a program.</p>
 
 <p>For comparison, the <a href="https://hackage.haskell.org/package/hostname-1.0/docs/Network-HostName.html">somewhat-analogous
 function</a>
