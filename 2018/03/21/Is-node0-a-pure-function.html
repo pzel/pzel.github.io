@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
-    <title>Index :: Simon Zelazny's Blog</title>
+    <title>Is node/0 a pure function? :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
@@ -50,126 +50,87 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 </style>
   </head>
   <body>
-    <div id="content" class="clearfix"> <header>
-  <img src="/img/simon_bw.png">
-  <h1 id='main-title'>Simon Zelazny's Blog</h1>
-  <h3>Notes on programming, culture, and language</h3>
-</header>
-
-<div class="post-list">
-  <section id="programming">
-    <h3>Posts</h3>
-    <ul>
-      
-      <li><a href="/2018/03/21/Is-node0-a-pure-function.html">Is node/0 a pure function?</a>
-        <p class="outline">Thinking about Erlang functions in Haskell types
-        </p>
-      </li>
-      
-      
-      
-      
-      
-      <li><a href="/2018/02/05/Folding-on-cowboy_req.html">Folding on cowboy_req</a>
-        <p class="outline">Streamlined use of a streamlined API
-        </p>
-      </li>
-      
-      
-      
-      
-      
-      
-      
-      <li><a href="/2018/01/27/Pair-programming-and-happiness.html">Pair Programming and Happiness</a>
-        <p class="outline">Perhaps there is a way to get it right
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2017/06/19/Bits-of-erlang-alpha-release.html">Bits of Erlang, alpha release</a>
-        <p class="outline">An experiment in Socratic education
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html">Encrypted hledger with Emacs and GnuPG</a>
-        <p class="outline">A reasonably seamless way to work with encrypted ledger files
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/02/27/Lorem-Ipsum-in-Polish.html">Lorem Ipsum in Polish</a>
-        <p class="outline">Minimum viable Markov chains in Haskell
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html">Lowbrow Haskell: A Quick Tetris Clone</a>
-        <p class="outline">A short overview of a TTY retro game re-implemented in Haskell.
-        </p>
-      </li>
-      
-      
-    </ul>
-  </section>
-  <section id="til">
-    <h3>Today I learned...</h3>
-    <ul>
-      
-      <li><a href="/til/2018/03/20/Elixir-cmd-star-expansion.html">
-	      Elixir's System.cmd and '*' expansion</a><br/>
-	      2018-03-20
-        <span class="tags">
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Is node/0 a pure function?</h1>
+  <small class="post-date">2018-03-21</small>
+  <div class="heading">
+    <p>Thinking about Erlang functions in Haskell types</p>
+    <p><span class="tags">
   
   <span class="tag">elixir</span>
   
-  <span class="tag">shell</span>
-  
-  <span class="tag">star</span>
-  
-</span>
- 
-      </li>
-      
-      <li><a href="/til/2018/02/02/Bad-return-from-supervisor.html">
-	      Mysterious 'bad_return' from supervisor</a><br/>
-	      2018-02-02
-        <span class="tags">
-  
   <span class="tag">erlang</span>
   
-  <span class="tag">bad_return</span>
+  <span class="tag">pure</span>
   
-  <span class="tag">supervisor</span>
+  <span class="tag">functional</span>
   
-</span>
- 
-      </li>
-      
-      <li><a href="/til/2018/01/30/Cowboy-replies.html">
-	      cowboy_req:reply works by side-effect!</a><br/>
-	      2018-01-30
-        <span class="tags">
-  
-  <span class="tag">erlang</span>
-  
-  <span class="tag">cowboy</span>
-  
-  <span class="tag">crash</span>
+  <span class="tag">net_kernel</span>
   
 </span>
- 
-      </li>
+</p>
+  </div>
+  <p>I had a very interesting debate with a co-worker today.</p>
+
+<p>I'd pointed out that the following filter expression felt like it was doing
+unnecessary <code>IO</code>, in the Haskell sense:</p>
+
+<pre><code>Enum.filter(fn {pid, _} -&gt; :erlang.node(pid) == node() end)
+</code></pre>
+
+<p>The argument was simply that <code>node/0</code> was not a pure function, and using such a
+function as a predicate to <code>Enum.filter/2</code> felt somewhat inelegant.  It was an
+off-hand comment, and I didn't think much about it, until the author of the
+code in question challenged me on what it means for a function to be pure.</p>
+
+<p>The gist of the argument was: since <code>node()</code> always returns the same thing
+throughout the run of a program on a given instance of the BEAM, is that not
+the same as purity, for all practical purposes?</p>
+
+<p>All my theoretical arguments (like how running the code on different machines
+yields different results) seemed unconvincing to the colleage. His argument
+about <code>node()</code> being effectively a global constant in the context of the VM
+seemed to suffice for him to treat it like a pure function.</p>
+
+<p>When theory fails (or the theorizer is not convincing enough), practice comes
+to the rescue. Here is a code snippet which proves that <code>node()</code> is <em>not</em> pure,
+because it implicity depends on the state of the <code>net_kernel</code> application:</p>
+
+<pre><code>erl -eval "
+{ok, _} = net_kernel:start(['hello@kitty', shortnames]),
+erlang:display(node()),
+net_kernel:stop(),
+{ok, _} = net_kernel:start(['bye@kitty', shortnames]),
+erlang:display(node()).
+" -s erlang halt
+</code></pre>
+
+<p>This will output two different values for <code>node()</code>:</p>
+
+<pre><code>Eshell V8.3.5.3  (abort with ^G)
+1&gt; 'hello@kitty'
+'bye@kitty'
+</code></pre>
+
+<p>This demonstrates that <code>node/0</code> is <em>not</em> a pure function.</p>
+
+<p>For comparison, the <a href="https://hackage.haskell.org/package/hostname-1.0/docs/Network-HostName.html">somewhat-analogous
+function</a>
+in Haskell does indeed have the type <code>IO Hostname</code>.</p>
+
+  <div class="post-nav">
+    <div class="prev">
       
-    </ul>
-  </section>
-</div>
-<footer>
+      <a href="/til/2018/03/20/Elixir-cmd-star-expansion.html">⇦Elixir's System.cmd and '*' expansion</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
   <div id="lfooter">
     <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a> </span>
   </div>
@@ -185,6 +146,8 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   <span style="clear:both">&nbsp;</span>
 </footer>
 
+  </div>
+</div>
 
     </div>
   </body>

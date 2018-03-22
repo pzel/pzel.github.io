@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
-    <title>Index :: Simon Zelazny's Blog</title>
+    <title>Elixir's System.cmd and '*' expansion :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
@@ -50,81 +50,10 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 </style>
   </head>
   <body>
-    <div id="content" class="clearfix"> <header>
-  <img src="/img/simon_bw.png">
-  <h1 id='main-title'>Simon Zelazny's Blog</h1>
-  <h3>Notes on programming, culture, and language</h3>
-</header>
-
-<div class="post-list">
-  <section id="programming">
-    <h3>Posts</h3>
-    <ul>
-      
-      <li><a href="/2018/03/21/Is-node0-a-pure-function.html">Is node/0 a pure function?</a>
-        <p class="outline">Thinking about Erlang functions in Haskell types
-        </p>
-      </li>
-      
-      
-      
-      
-      
-      <li><a href="/2018/02/05/Folding-on-cowboy_req.html">Folding on cowboy_req</a>
-        <p class="outline">Streamlined use of a streamlined API
-        </p>
-      </li>
-      
-      
-      
-      
-      
-      
-      
-      <li><a href="/2018/01/27/Pair-programming-and-happiness.html">Pair Programming and Happiness</a>
-        <p class="outline">Perhaps there is a way to get it right
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2017/06/19/Bits-of-erlang-alpha-release.html">Bits of Erlang, alpha release</a>
-        <p class="outline">An experiment in Socratic education
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html">Encrypted hledger with Emacs and GnuPG</a>
-        <p class="outline">A reasonably seamless way to work with encrypted ledger files
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/02/27/Lorem-Ipsum-in-Polish.html">Lorem Ipsum in Polish</a>
-        <p class="outline">Minimum viable Markov chains in Haskell
-        </p>
-      </li>
-      
-      
-      
-      <li><a href="/2016/01/18/Lowbrow-Haskell-A-Quick-Tetris-Clone.html">Lowbrow Haskell: A Quick Tetris Clone</a>
-        <p class="outline">A short overview of a TTY retro game re-implemented in Haskell.
-        </p>
-      </li>
-      
-      
-    </ul>
-  </section>
-  <section id="til">
-    <h3>Today I learned...</h3>
-    <ul>
-      
-      <li><a href="/til/2018/03/20/Elixir-cmd-star-expansion.html">
-	      Elixir's System.cmd and '*' expansion</a><br/>
-	      2018-03-20
-        <span class="tags">
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Elixir's System.cmd and '*' expansion</h1>
+  <p class="post-date">Today I learned (2018-03-20)<br/>
+    Tagged: <span class="tags">
   
   <span class="tag">elixir</span>
   
@@ -133,43 +62,50 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   <span class="tag">star</span>
   
 </span>
- 
-      </li>
+ </p>
+  <div class="heading"> </div>
+  <p>I recently tried to use Elixir's
+<a href="https://hexdocs.pm/elixir/System.html#cmd/3"><code>System.cmd/2</code></a> to clear some
+on-disk state, as part of a test. Unfortunately, my tests started to fail for
+unclear reasons, and closer inspection proved that the state was <em>not</em> being
+cleared.</p>
+
+<p>Here's the command I was using:</p>
+
+<pre><code> {"", 0} = System.cmd("rm", ["-rf", "/tmp/myapp.mymodule/*"])
+</code></pre>
+
+<p>If I'd have read the manual page linked above, I'd have known that:</p>
+
+<blockquote><p>wildcard expansion will not happen (unless Path.wildcard/2 is used explicitly)</p></blockquote>
+
+<p>What ended up happening was that the <code>*</code> was being passed verbatim to the <code>rm</code>
+command. Since no such file existed inside the directory, nothing was
+actually deleted.</p>
+
+<p>I changed the invocation to simply delete the entire directory, avoiding
+expansion:</p>
+
+<pre><code> {"", 0} = System.cmd("rm", ["-rf", "/tmp/myapp.mymodule"])
+</code></pre>
+
+<p>The non-hacky solution is to use an <a href="https://hexdocs.pm/elixir/File.html#rm_rf/1">appropriate
+function</a> from the <code>File</code> module.</p>
+
+  <div class="post-nav">
+    <div class="prev">
       
-      <li><a href="/til/2018/02/02/Bad-return-from-supervisor.html">
-	      Mysterious 'bad_return' from supervisor</a><br/>
-	      2018-02-02
-        <span class="tags">
-  
-  <span class="tag">erlang</span>
-  
-  <span class="tag">bad_return</span>
-  
-  <span class="tag">supervisor</span>
-  
-</span>
- 
-      </li>
+      <a href="/2018/02/05/Folding-on-cowboy_req.html">⇦Folding on cowboy_req</a>
       
-      <li><a href="/til/2018/01/30/Cowboy-replies.html">
-	      cowboy_req:reply works by side-effect!</a><br/>
-	      2018-01-30
-        <span class="tags">
-  
-  <span class="tag">erlang</span>
-  
-  <span class="tag">cowboy</span>
-  
-  <span class="tag">crash</span>
-  
-</span>
- 
-      </li>
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
       
-    </ul>
-  </section>
-</div>
-<footer>
+      <a href="/2018/03/21/Is-node0-a-pure-function.html">Is node/0 a pure function?⇨</a>
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
   <div id="lfooter">
     <span class='copy'>&copy; 2013-2018 <a href="/about.html">Simon Zelazny</a> </span>
   </div>
@@ -185,6 +121,8 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   <span style="clear:both">&nbsp;</span>
 </footer>
 
+  </div>
+</div>
 
     </div>
   </body>

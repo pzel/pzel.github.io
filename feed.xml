@@ -7,6 +7,22 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Is node/0 a pure function?</title>
+        <description>Thinking about Erlang functions in Haskell types</description>
+        <pubDate>Wed, 21 Mar 2018 00:00:00 -0700</pubDate>
+        <link>http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</guid>
+      </item>
+    
+      <item>
+        <title>Elixir's System.cmd and '*' expansion</title>
+        <description></description>
+        <pubDate>Tue, 20 Mar 2018 00:00:00 -0700</pubDate>
+        <link>http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</guid>
+      </item>
+    
+      <item>
         <title>Folding on cowboy_req</title>
         <description>Streamlined use of a streamlined API</description>
         <pubDate>Mon, 05 Feb 2018 00:00:00 -0800</pubDate>
