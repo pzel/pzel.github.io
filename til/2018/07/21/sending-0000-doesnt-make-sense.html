@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
-    <title>CUPS: Adding a printer as a user :: Simon Zelazny's Blog</title>
+    <title>Sending 0.0.0.0 doesn't make sense :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
@@ -52,39 +52,43 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   </head>
   <body>
     <div id="content" class="clearfix"> <div class="post-body">
-  <h1>CUPS: Adding a printer as a user</h1>
-  <p class="post-date">Today I learned (2018-03-27)<br/>
+  <h1>Sending 0.0.0.0 doesn't make sense</h1>
+  <p class="post-date">Today I learned (2018-07-21)<br/>
     Tagged: <span class="tags">
   
-  <span class="tag">cups</span>
+  <span class="tag">networking</span>
   
-  <span class="tag">linux</span>
+  <span class="tag">tcp</span>
   
-  <span class="tag">hp</span>
-  
-  <span class="tag">hplip</span>
+  <span class="tag">distributed-systems</span>
   
 </span>
  </p>
   <div class="heading"> </div>
-  <p>If you're getting strange <code>Forbidden</code> errors while adding new printers via CUPS,
-make sure your user is part of the <code>lpadmin</code> group.</p>
+  <p>While I've grown used to specifying
+<a href="https://en.wikipedia.org/wiki/0.0.0.0">0.0.0.0</a> as the listening address for
+servers, I got bitten yesterday and realized the dangers of this practice.</p>
 
-<pre><code>gpasswd -a $USER lpadmin
-</code></pre>
+<p>If the listening address of a server ever needs to be communicated to others
+(as is the case with clustered systems), configuring <code>0.0.0.0</code> will lead to bad
+things happening. That is: other servers, having learned that your address is
+<code>0.0.0.0:SOMEPORT</code>, will attempt to connect and fail.</p>
 
-<p>Log out, log in again and enjoy your printer.</p>
+<p>The <a href="https://tools.ietf.org/html/rfc1122">RFC</a> states clearly:</p>
+
+<blockquote><p>This host on this network.  MUST NOT be sent, except as
+a source address as part of an initializatioan procedure
+by which the host learns its own IP address.</p></blockquote>
 
   <div class="post-nav">
     <div class="prev">
       
-      <a href="/2018/03/21/Is-node0-a-pure-function.html">⇦Is node/0 a pure function?</a>
+      <a href="/til/2018/03/27/CUPS-adding-printer-as-a-user.html">⇦CUPS: Adding a printer as a user</a>
       
     </div>
     <div class="up"><a href="/">⇧Back to top</a></div>
     <div class="next">
-      
-      <a href="/til/2018/07/21/sending-0000-doesnt-make-sense.html">Sending 0.0.0.0 doesn't make sense⇨</a>
+       &nbsp;
       
     </div>
     <div>&nbsp;</div>
