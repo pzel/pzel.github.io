@@ -8,7 +8,23 @@
     
       <item>
         <title>Sending 0.0.0.0 doesn't make sense</title>
-        <description></description>
+        <description>
+	&lt;p&gt;While I've grown used to specifying
+&lt;a href=&quot;https://en.wikipedia.org/wiki/0.0.0.0&quot;&gt;0.0.0.0&lt;/a&gt; as the listening address for
+servers, I got bitten yesterday and realized the dangers of this practice.&lt;/p&gt;
+
+&lt;p&gt;If the listening address of a server ever needs to be communicated to others
+(as is the case with clustered systems), configuring &lt;code&gt;0.0.0.0&lt;/code&gt; will lead to bad
+things happening. That is: other servers, having learned that your address is
+&lt;code&gt;0.0.0.0:SOMEPORT&lt;/code&gt;, will attempt to connect and fail.&lt;/p&gt;
+
+&lt;p&gt;The &lt;a href=&quot;https://tools.ietf.org/html/rfc1122&quot;&gt;RFC&lt;/a&gt; states clearly:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;This host on this network.  MUST NOT be sent, except as
+a source address as part of an initializatioan procedure
+by which the host learns its own IP address.&lt;/p&gt;&lt;/blockquote&gt;
+
+	</description>
         <pubDate>Sat, 21 Jul 2018 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</guid>
@@ -16,7 +32,16 @@
     
       <item>
         <title>CUPS: Adding a printer as a user</title>
-        <description></description>
+        <description>
+	&lt;p&gt;If you're getting strange &lt;code&gt;Forbidden&lt;/code&gt; errors while adding new printers via CUPS,
+make sure your user is part of the &lt;code&gt;lpadmin&lt;/code&gt; group.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;gpasswd -a $USER lpadmin
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Log out, log in again and enjoy your printer.&lt;/p&gt;
+
+	</description>
         <pubDate>Tue, 27 Mar 2018 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</guid>
@@ -24,7 +49,58 @@
     
       <item>
         <title>Is node/0 a pure function?</title>
-        <description>Thinking about Erlang functions in Haskell types</description>
+        <description>Thinking about Erlang functions in Haskell types
+	&lt;p&gt;I had a very interesting debate with a co-worker today.&lt;/p&gt;
+
+&lt;p&gt;I'd pointed out that the following filter expression felt like it was doing
+unnecessary &lt;code&gt;IO&lt;/code&gt;, in the Haskell sense:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Enum.filter(fn {pid, _} -&amp;gt; :erlang.node(pid) == node() end)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The argument was simply that &lt;code&gt;node/0&lt;/code&gt; was not a pure function, and using such a
+function as a predicate to &lt;code&gt;Enum.filter/2&lt;/code&gt; felt somewhat inelegant.  It was an
+off-hand comment, and I didn't think much about it, until the author of the
+code in question challenged me on what it means for a function to be pure.&lt;/p&gt;
+
+&lt;p&gt;The gist of the argument was: since &lt;code&gt;node()&lt;/code&gt; always returns the same thing
+throughout the run of a program on a given instance of the BEAM, is that not
+the same as purity, for all practical purposes?&lt;/p&gt;
+
+&lt;p&gt;All my theoretical arguments (like how running the code on different machines
+yields different results) seemed unconvincing to the colleague. His argument
+about &lt;code&gt;node()&lt;/code&gt; being effectively a global constant in the context of the VM
+seemed to suffice for him to treat it like a pure function.&lt;/p&gt;
+
+&lt;p&gt;When theory fails (or the theorizer is not convincing enough), practice comes
+to the rescue. Here is a code snippet which proves that &lt;code&gt;node()&lt;/code&gt; is &lt;em&gt;not&lt;/em&gt; pure,
+because it implicity depends on the state of the &lt;code&gt;net_kernel&lt;/code&gt; application:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;erl -eval &quot;
+{ok, _} = net_kernel:start(['hello@kitty', shortnames]),
+erlang:display(node()),
+net_kernel:stop(),
+{ok, _} = net_kernel:start(['bye@kitty', shortnames]),
+erlang:display(node()).
+&quot; -s erlang halt
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This will output two different values for &lt;code&gt;node()&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Eshell V8.3.5.3  (abort with ^G)
+1&amp;gt; 'hello@kitty'
+'bye@kitty'
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This demonstrates that &lt;code&gt;node/0&lt;/code&gt; is &lt;em&gt;not&lt;/em&gt; a pure function, even in the
+loose-but-practical sense of always returning the same value during one run of
+a program.&lt;/p&gt;
+
+&lt;p&gt;For comparison, the &lt;a href=&quot;https://hackage.haskell.org/package/hostname-1.0/docs/Network-HostName.html&quot;&gt;somewhat-analogous
+function&lt;/a&gt;
+in Haskell does indeed have the type &lt;code&gt;IO Hostname&lt;/code&gt;.&lt;/p&gt;
+
+	</description>
         <pubDate>Wed, 21 Mar 2018 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</guid>
@@ -32,7 +108,36 @@
     
       <item>
         <title>Elixir's System.cmd and '*' expansion</title>
-        <description></description>
+        <description>
+	&lt;p&gt;I recently tried to use Elixir's
+&lt;a href=&quot;https://hexdocs.pm/elixir/System.html#cmd/3&quot;&gt;&lt;code&gt;System.cmd/2&lt;/code&gt;&lt;/a&gt; to clear some
+on-disk state, as part of a test. Unfortunately, my tests started to fail for
+unclear reasons, and closer inspection proved that the state was &lt;em&gt;not&lt;/em&gt; being
+cleared.&lt;/p&gt;
+
+&lt;p&gt;Here's the command I was using:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; {&quot;&quot;, 0} = System.cmd(&quot;rm&quot;, [&quot;-rf&quot;, &quot;/tmp/myapp.mymodule/*&quot;])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If I'd have read the manual page linked above, I'd have known that:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;wildcard expansion will not happen (unless Path.wildcard/2 is used explicitly)&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;What ended up happening was that the &lt;code&gt;*&lt;/code&gt; was being passed verbatim to the &lt;code&gt;rm&lt;/code&gt;
+command. Since no such file existed inside the directory, nothing was
+actually deleted.&lt;/p&gt;
+
+&lt;p&gt;I changed the invocation to simply delete the entire directory, avoiding
+expansion:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt; {&quot;&quot;, 0} = System.cmd(&quot;rm&quot;, [&quot;-rf&quot;, &quot;/tmp/myapp.mymodule&quot;])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The non-hacky solution is to use an &lt;a href=&quot;https://hexdocs.pm/elixir/File.html#rm_rf/1&quot;&gt;appropriate
+function&lt;/a&gt; from the &lt;code&gt;File&lt;/code&gt; module.&lt;/p&gt;
+
+	</description>
         <pubDate>Tue, 20 Mar 2018 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</guid>
@@ -40,7 +145,111 @@
     
       <item>
         <title>Folding on cowboy_req</title>
-        <description>Streamlined use of a streamlined API</description>
+        <description>Streamlined use of a streamlined API
+	&lt;h2&gt;The problem&lt;/h2&gt;
+
+&lt;p&gt;Pre-1.x versions of &lt;a href=&quot;https://github.com/ninenines/cowboy&quot;&gt;cowboy&lt;/a&gt; have an elegant, minimalist, and uniform API for
+grabbing data out of &lt;code&gt;http_req&lt;/code&gt; records. This API includes functions like:
+&lt;code&gt;cowboy_req:header/3&lt;/code&gt;, &lt;code&gt;cowboy_req:qs_vals/1&lt;/code&gt;, etc.&lt;/p&gt;
+
+&lt;p&gt;Their elegance and uniformity come from the fact that they all return the tuple
+&lt;code&gt;{A, NewReq}&lt;/code&gt;, such that &lt;code&gt;A&lt;/code&gt; is the result of the function call, and &lt;code&gt;NewReq&lt;/code&gt;
+is the potentially-transformed, new request record that you should use
+thereafter.&lt;/p&gt;
+
+&lt;p&gt;Suppose your business requirements dictate that you have to gather a lot of
+data from a request, and then &lt;code&gt;do_something()&lt;/code&gt; with it. What ends up happening
+is that your code begins to look like the following:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{OriginalIp, Req1} = cowboy_req:header(&amp;lt;&amp;lt;&quot;x-forwarded-for&quot;&amp;gt;&amp;gt;, Req, &amp;lt;&amp;lt;&amp;gt;&amp;gt;),
+{UserAgent, Req2} = cowboy_req:header(&amp;lt;&amp;lt;&quot;user-agent&quot;&amp;gt;&amp;gt;, Req1, &amp;lt;&amp;lt;&amp;gt;&amp;gt;),
+{QsVals, Req3} = cowboy_req:qs_vals(Req2),
+{Path, Req4} = cowboy_req:path(Req4),
+Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
+{ok, Reply, Req4}.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This gets tedious fast, and causes problems if you want to add or remove some
+of the intermediate steps. For example: removing the assignment to &lt;code&gt;Req2&lt;/code&gt; would
+force you to rename all following variables, or leave a 'hole' and rename
+&lt;code&gt;Req1&lt;/code&gt; to &lt;code&gt;Req2&lt;/code&gt; in the previous line. Inelegant options, both.&lt;/p&gt;
+
+&lt;h2&gt;The solution&lt;/h2&gt;
+
+&lt;p&gt;As the wonderful &lt;a href=&quot;http://www.cs.nott.ac.uk/~pszgmh/fold.pdf&quot;&gt;tutorial on the universality and expresiveness of fold&lt;/a&gt; will
+tell you, &lt;code&gt;fold&lt;/code&gt; is the best function. We can clean up the above code and
+remove our useless assignments to numbered variables by using the following
+pattern.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;{[OriginalIp, UserAgent, QsVals, Path], NewReq} =
+  fold_req([fun(R) -&amp;gt; cowboy_req:header(&amp;lt;&amp;lt;&quot;x-forwarded-for&quot;&amp;gt;&amp;gt;, R, &amp;lt;&amp;lt;&amp;gt;&amp;gt;) end,
+            fun(R) -&amp;gt; cowboy_req:header(&amp;lt;&amp;lt;&quot;user-agent&quot;&amp;gt;&amp;gt;, R, &amp;lt;&amp;lt;&amp;gt;&amp;gt;) end,
+            fun(R) -&amp;gt; cowboy_req:qs_vals(R) end,
+            fun(R) -&amp;gt; cowboy_req:path(R) end]
+            Req),
+Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
+{ok, Reply, NewReq}.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Yes, that's 2 extra lines of overhead, but the gain is that we don't have to
+keep track of the various &lt;code&gt;Req&lt;/code&gt;s that abound in the code above.&lt;/p&gt;
+
+&lt;p&gt;All of the functions in the chain are completely independent, and we can add or
+remove them as we see fit, without having to rearrange all the code.&lt;/p&gt;
+
+&lt;h2&gt;The implemenation&lt;/h2&gt;
+
+&lt;p&gt;The implementation of &lt;code&gt;fold_req/2&lt;/code&gt; is trivial, so if you're up for the task,
+&lt;strong&gt;try to write it yourself, now&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;Scroll below to see my take on the solution.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;----------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------- SPOILERS BELOW ---------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;The actual implementation&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code&gt;fold_req(Funs, Req) -&amp;gt; 
+    lists:foldr(fun fold_step/2, {[], Req}, Funs).
+
+fold_step(Fun, {Acc, Req}) -&amp;gt;
+    {Val, NewReq} = Fun(Req),
+    {[Val|Acc], NewReq}.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Cheers!&lt;/p&gt;
+
+	</description>
         <pubDate>Mon, 05 Feb 2018 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</guid>
@@ -48,7 +257,64 @@
     
       <item>
         <title>Mysterious 'bad_return' from supervisor</title>
-        <description></description>
+        <description>
+	&lt;p&gt;I was recently evaulating this &lt;a href=&quot;https://github.com/tkyshm/efluentc&quot;&gt;erlang fluentd
+client&lt;/a&gt; and got the following error when
+running &lt;code&gt;rebar3 ct&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;%%% efluentc_SUITE ==&amp;gt; {tc_auto_skip,
+ {failed,
+  {efluentc_SUITE,init_per_suite,
+   {'EXIT',
+    {{badmatch,
+      {error,
+       {efluentc,
+        {bad_return,
+         {{efluentc_app,start,[normal,[]]},
+          {'EXIT',
+           {noproc,
+            {gen_server,call,[efluentc_sup,{start_child,[0]},infinity]}}}}}}}},
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;What's a &lt;code&gt;bad_return&lt;/code&gt;? It happens when the &lt;code&gt;init/1&lt;/code&gt; function in a supervisor
+module returns an invalid &lt;a href=&quot;http://erlang.org/doc/man/supervisor.html#Module:init-1&quot;&gt;supervisor
+spec&lt;/a&gt;. Still, the
+&lt;a href=&quot;https://travis-ci.org/tkyshm/efluentc&quot;&gt;project's Travis page&lt;/a&gt; shows the build
+as green! What gives?&lt;/p&gt;
+
+&lt;p&gt;It turns out that while the version of Erlang that I had been running, 17.5,
+supports maps, it does &lt;strong&gt;not&lt;/strong&gt; support the relatively new map-based supervisor
+spec API.&lt;/p&gt;
+
+&lt;p&gt;This spec was causing the error:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;%% Supervisor callbacks
+init([]) -&amp;gt;
+    SupFlags = #{
+      strategy  =&amp;gt; simple_one_for_one,
+      intensity =&amp;gt; 1000,
+      period    =&amp;gt; 3600
+    },
+
+    Child = #{
+      id       =&amp;gt; 'efluentc_client',
+      start    =&amp;gt; {'efluentc_client', start_link, []},
+      restart  =&amp;gt; permanent,
+      shutdown =&amp;gt; 2000,
+      type     =&amp;gt; worker,
+      modules  =&amp;gt; ['efluentc_client']
+    },
+
+    {ok, {SupFlags, [Child]}}.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2&gt;Conclusion&lt;/h2&gt;
+
+&lt;p&gt;If you're having problems with supervisors crashing with &lt;code&gt;bad_return&lt;/code&gt;s, check
+your Erlang/OTP version. Map-based specs were added in &lt;a href=&quot;http://www.erlang.org/news/86&quot;&gt;Erlang
+18&lt;/a&gt;.&lt;/p&gt;
+
+	</description>
         <pubDate>Fri, 02 Feb 2018 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</guid>
@@ -56,7 +322,26 @@
     
       <item>
         <title>cowboy_req:reply works by side-effect!</title>
-        <description></description>
+        <description>
+	&lt;p&gt;Let's say you have the following &lt;a href=&quot;https://github.com/ninenines/cowboy&quot;&gt;cowboy&lt;/a&gt; handler:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;reply_with_things(Things, Req, State) -&amp;gt;
+    {ok, Req1} = cowboy_req:reply(200,
+        [{&amp;lt;&amp;lt;&quot;content-type&quot;&amp;gt;&amp;gt;, &amp;lt;&amp;lt;&quot;application/json&quot;&amp;gt;&amp;gt;}],
+        jiffy:encode({[{things, Things}]}), Req),
+    _ = some_action(Things),
+    {ok, Req1, State}.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;and &lt;code&gt;some_action/1&lt;/code&gt; crashes. What gets returned to the client?&lt;/p&gt;
+
+&lt;p&gt;In turns out that the client will still get the encoded json response, as
+&lt;code&gt;cowboy_req:reply&lt;/code&gt; works by side-effect.&lt;/p&gt;
+
+&lt;p&gt;Not that you'd want to have code like the above in your system. It's here just
+for educational purposes.&lt;/p&gt;
+
+	</description>
         <pubDate>Tue, 30 Jan 2018 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</guid>
@@ -64,7 +349,149 @@
     
       <item>
         <title>Pair Programming and Happiness</title>
-        <description>Perhaps there is a way to get it right</description>
+        <description>Perhaps there is a way to get it right
+	&lt;h2&gt;What this post is about&lt;/h2&gt;
+
+&lt;p&gt;Every time an article about pair programming surfaces in one of the Internet's
+watering holes, I am surprised by the amount of negativity surrounding the
+practice.&lt;/p&gt;
+
+&lt;p&gt;In this post, I suggest two modifications to &quot;standard&quot; pair programming, which
+should make it more enjoyable, even for introverts and skilled experts.&lt;/p&gt;
+
+&lt;h2&gt;People complain&lt;/h2&gt;
+
+&lt;p&gt;Reading the top top-rated comments in &lt;a href=&quot;https://lobste.rs/s/wyd3di/do_you_pair_program&quot;&gt;one of many threads on
+pairing&lt;/a&gt;, one sees critical comments like these:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;I can’t stand pair programming, and I simply would not work somewhere that required it.&lt;/p&gt;
+
+&lt;p&gt;Pair programming (..)? Super not a fan.&lt;/p&gt;
+
+&lt;p&gt;I’m personally strongly against it.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;While I haven't done a through qualitative study on the sentiments expressed,
+one of the main arguments against pairing seems to be the fact that programmers
+don't enjoy being forced to socialize against their will.
+This forced socialization entails things like:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;sharing the keyboard&lt;/li&gt;
+&lt;li&gt;sharing editor settings&lt;/li&gt;
+&lt;li&gt;close physical proximity to the other member of the pair&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;The other counterargument centers around the difficulties in matching skill and
+experience levels between the two members of a pair. Here, the following come up:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;two experienced programmers do more work separately then when pairing&lt;/li&gt;
+&lt;li&gt;two juniors will not learn anything from each other&lt;/li&gt;
+&lt;li&gt;it makes sense to pair juniors with seniors only during the onboarding period&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;This skills-based barrier to pleasurable and productive pairing is indeed more
+serious, but I have seen it overcome with a small shift in attitude and
+approach.&lt;/p&gt;
+
+&lt;p&gt;Below, I'd like to present the paring setup and techniques that I've used (and
+seen used) in the last few years. I believe that they alleviate some of the
+misgivings about pair programming mentioned above.&lt;/p&gt;
+
+&lt;h2&gt;Introverts, separate!&lt;/h2&gt;
+
+&lt;p&gt;I've done most my professional work remotely. A lot of the code I've
+(co-)developed was written in a pair-programming+TDD setting, &lt;strong&gt;remotely&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;How does one effectively pair-program when not at the same desk? I'm not the
+first person to recommend the classic &lt;code&gt;ssh + tmux&lt;/code&gt; solution. I believe
+this solution is &lt;strong&gt;strictly better&lt;/strong&gt; than pair programming at one desk.&lt;/p&gt;
+
+&lt;p&gt;It works like this:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;The team sets up a shared development box, accessible by ssh/mosh&lt;/li&gt;
+&lt;li&gt;A pair of team members logs in, &lt;code&gt;tmux a&lt;/code&gt;ttaches to a shared terminal&lt;/li&gt;
+&lt;li&gt;They run &lt;del&gt;vim&lt;/del&gt; emacs inside&lt;/li&gt;
+&lt;li&gt;They use a separate app for audio. (Mumble, Skype, Slack calls, etc.)&lt;/li&gt;
+&lt;/ol&gt;
+
+
+&lt;p&gt;This solution is so good, that I've even used it while working in the same room
+as the pairing partner (sans voice app, of course). It provides both parties
+with a &lt;a href=&quot;https://en.wikipedia.org/wiki/Joint_attention&quot;&gt;shared locus of attention&lt;/a&gt;, while not exposing them to physical
+discomfort.&lt;/p&gt;
+
+&lt;p&gt;While this solution clearly eliminates physical issues around pairing, the
+problem of a shared programming environment remains. As pair programming
+requires practitioners to be fluent with the tools they use day-to-day,
+fundamentally there will always be a need for compromise on this front.&lt;/p&gt;
+
+&lt;p&gt;Practically, however, most backend programmers will be familiar with either vim
+or emacs—a judicious use of toggles for switching between setting groups
+should sort out personal quirks. (For example: at work we bind &lt;code&gt;&amp;lt;F4&amp;gt;&lt;/code&gt; to switch
+emacs from vanilla behavior to &lt;a href=&quot;https://www.emacswiki.org/emacs/Evil&quot;&gt;evil-mode&lt;/a&gt;. It works well enough.)&lt;/p&gt;
+
+&lt;h2&gt;Jamming is conversation&lt;/h2&gt;
+
+&lt;p&gt;The other issue is related to skill levels. Simplifying skill levels to a
+binary of &lt;em&gt;junior&lt;/em&gt; and &lt;em&gt;senior&lt;/em&gt;, we get 3 possible pairings: both juniors, both
+seniors, and junior+senior.&lt;/p&gt;
+
+&lt;p&gt;The junior+senior combination seems to be the most highly regarded use case for
+pair programming, even among the detractors. It makes sense that putting the
+less experienced in close quarters with a seasoned master should benefit the
+junior. Even in these cases, I can imagine that some seniors may feel that
+their time isn't being put to good use, while some juniors might get
+overwhelmed watching their mentor work with great efficiency. This leads to
+fatigue and 'just watching' as the other person works—definitely a waste of
+both the devs' time and the employer's money.&lt;/p&gt;
+
+&lt;p&gt;The key to getting the most our of pair programming is to &lt;strong&gt;A&lt;/strong&gt;lways &lt;strong&gt;B&lt;/strong&gt;e
+&lt;strong&gt;C&lt;/strong&gt;oding. The common pairing methodology of driver and navigator switching
+roles every 30 minutes is tedious and wasteful. I believe that turning the
+coding session into a jam session is the key to making pairing work.&lt;/p&gt;
+
+&lt;p&gt;How to keep both parties engaged and coding? If you're applying TDD, it's easy:
+just do ping-pong pairing. Developer A writes a test. Developer B writes
+enough of an implementation to make the test pass, then continues with another
+test. Developer A picks up, and modifies the implementation to meet the demands.&lt;/p&gt;
+
+&lt;p&gt;This kind of call-and-response style of development keeps both parties focused
+on the code, talking and thinking about the task at hand. While TDD works most
+of the time, there exist some issues which cannot be simply reduced to a test
+case. Here, still, the challenge-and-reply approach does wonders for code
+quality and developer engagement. (For example: one developer might challenge
+the other by saying: &quot;There is a more efficient algorithm&quot;, or &quot;I can break
+this mechanism like so. How will you fix it?&quot;, etc.)&lt;/p&gt;
+
+&lt;p&gt;By approaching pair programming as a conversation, we can get more mileage out
+of any combination of skill levels. For two juniors, the back and forth may
+touch on unit test design or knowledge of the system. Two seniors pairing will
+get opportunities to critically examine and revise system architecture or
+coding standards, but the possibilities for jamming are endless. They may even
+involve betting money (sic!).&lt;/p&gt;
+
+&lt;h2&gt;Wrapping up&lt;/h2&gt;
+
+&lt;p&gt;Above, I described two tweaks to pair programming practice that, in my
+experience, make it much more enjoyable. To summarize:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;A remote shared workstation may alleviate the physical discomfort of pairing&lt;/li&gt;
+&lt;li&gt;Call-and-response jamming will keep both devs engaged, learning, and focused
+on the code, regardless of skill levels&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;This concludes my humble contribution to the ongoing conversation around pair
+programming.&lt;/p&gt;
+
+&lt;p&gt;(Edited on 2018-01-30 for spelling)&lt;/p&gt;
+
+	</description>
         <pubDate>Sat, 27 Jan 2018 00:00:00 -0800</pubDate>
         <link>http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</guid>
@@ -72,7 +499,65 @@
     
       <item>
         <title>Bits of Erlang, alpha release</title>
-        <description>An experiment in Socratic education</description>
+        <description>An experiment in Socratic education
+	&lt;p&gt;Long ago in 2015, at LambdaCon in Bologna, I gave a hands-on workshop titled
+&lt;em&gt;An Introduction to Erlang/OTP&lt;/em&gt;. It was, in truth, a largely improvised
+code-jam around four fundamental Erlang concepts:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;Concurrency&lt;/li&gt;
+&lt;li&gt;Process isolation&lt;/li&gt;
+&lt;li&gt;Message passing&lt;/li&gt;
+&lt;li&gt;Error propagation&lt;/li&gt;
+&lt;/ol&gt;
+
+
+&lt;p&gt;I extracted these four from &lt;a href=&quot;http://erlang.org/download/armstrong_thesis_2003.pdf&quot;&gt;Joe Armstrong's PhD thesis&lt;/a&gt;, as I felt they
+were the most salient characteristics of the language and platform.&lt;/p&gt;
+
+&lt;p&gt;The code-jam idea seemed sound, and promised some engagement from a live
+audience, so I gave it one more go at the Erlang Solutions office in Krakow,
+when we received a visit from a &lt;a href=&quot;https://www.syntaxleiden.nl/&quot;&gt;CS Student organization from Holland&lt;/a&gt;.
+They seemed to like it.&lt;/p&gt;
+
+&lt;p&gt;The follow-up plan was to publish the code-jam and tutorial for the benefit of
+the original workshop attendees, the students, and anyone interested in Erlang,
+but a laptop change or two resulted in all the code getting lost.&lt;/p&gt;
+
+&lt;p&gt;I decided against recording a screencast, sharing the belief that &lt;a href=&quot;https://simplystatistics.org/2017/06/13/the-future-of-education-is-plain-text/&quot;&gt;the future
+of education is plain text&lt;/a&gt;. The Socratic approach taken by the authors of
+the &lt;em&gt;&lt;a href=&quot;https://mitpress.mit.edu/books/little-schemer&quot;&gt;Little Schemer&lt;/a&gt;&lt;/em&gt; series of books seemed like a good compromise between
+interactivity and static textuality.&lt;/p&gt;
+
+&lt;p&gt;After two years of messing around, I'm releasing what I have. I humbly ask for
+constructive feedback and suggestions.&lt;/p&gt;
+
+&lt;h2&gt;Click here for the tutorial: &lt;br/&gt;&lt;a href=&quot;/Bits-of-erlang-chapter-1-concurrency.html&quot;&gt;Bits of Erlang, chapter 1: Concurrency&lt;/a&gt;&lt;/h2&gt;
+
+&lt;h2&gt;Open questions&lt;/h2&gt;
+
+&lt;p&gt;I'm simply releasing what I have so far, but many questions remain:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;Is plain Erlang shell syntax the way to go? The whole &lt;code&gt;F = fun F() -&amp;gt;&lt;/code&gt;
+dance, along with single-use variables, and the need to quit and reopen the
+shell, makes the exercise rather painful in the long run.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;If we go with compiled Erlang modules, we'll have to explain the boilerplate:
+&lt;code&gt;-export()&lt;/code&gt;s, &lt;code&gt;c()&lt;/code&gt;ompiling code, and having to edit the code in a separate
+environment from the shell itself. This is how I did the live-coding.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;We could just go with Elixir, but then we face the problem of having to
+include module definitions everywhere, which obfuscates the
+essentials. There may be an elegant way of handling this.&lt;/p&gt;&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;Should the whole thing be slower-paced? There is basically &lt;strong&gt;no&lt;/strong&gt;
+explanation of Erlang syntax.. Perhaps a chapter 0, introducing syntax and
+basic data structures (lists, tuples, atoms, numbers) is in order?&lt;/p&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+
+&lt;p&gt;If you have any thoughts on these or other concerns, please reach out to me via
+email.&lt;/p&gt;
+
+	</description>
         <pubDate>Mon, 19 Jun 2017 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
@@ -80,7 +565,131 @@
     
       <item>
         <title>Encrypted hledger with Emacs and GnuPG</title>
-        <description>A reasonably seamless way to work with encrypted ledger files</description>
+        <description>A reasonably seamless way to work with encrypted ledger files
+	&lt;p&gt;Last month, I went all-in with organizing my life in plain text. I started
+logging work and study notes in &lt;a href=&quot;http://orgmode.org&quot;&gt;org-mode&lt;/a&gt;,
+and adopted &lt;a href=&quot;http://hledger.org&quot;&gt;hledger&lt;/a&gt; for keeping track of finances.&lt;/p&gt;
+
+&lt;p&gt;Both personal notes and financial documents warrant extra security measures.
+Emacs' &lt;a href=&quot;https://www.emacswiki.org/emacs/EasyPG&quot;&gt;EasyPG&lt;/a&gt; integrates seamlessly
+with my day-to-day emacsing, so I decided to leverage the fact. Below are some
+short notes on how to get things working with the least amount of hassle.&lt;/p&gt;
+
+&lt;p&gt;This blog entry assumes the reader has &lt;a href=&quot;https://gnupg.org&quot;&gt;GnuPG&lt;/a&gt; set up on
+their machine.&lt;/p&gt;
+
+&lt;h2&gt;Encrypting your text files&lt;/h2&gt;
+
+&lt;p&gt;EasyPG has a neat way of letting you specify whose public key you'd like to
+encrypt a given file with. You can set elisp variables in a 'special' comment
+on the first line of the file:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;  ;; -*- epa-file-encrypt-to: (&quot;your.publickey@email.com&quot;);  -*-
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;When emacs reads this file from disk, it will set the buffer-local variable
+&lt;code&gt;epa-file-encrypt-to&lt;/code&gt; to your specified email address. This means that, upon
+saving, EasyPG will use that public key to encrypt the file.&lt;/p&gt;
+
+&lt;p&gt;However, until you actually save the file to disk, and then re-read it, EasyPG
+will ask you to specify whose key you'd like to encrpyt the file
+with... &lt;em&gt;Didn't we just do that via the 'magic comment'!?&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;There is a way around this behavior. We'll force Emacs to interpret the magic
+comment by switching to &lt;code&gt;normal-mode&lt;/code&gt; and back.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(defun refresh-buffer ()
+  &quot;Reload file-local variables&quot;
+  (interactive)
+  (let ((v major-mode))
+    (normal-mode)
+    (funcall v)))
+
+(global-set-key (kbd &quot;&amp;lt;f5&amp;gt;&quot;) 'refresh-buffer)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now we need to just hit &lt;code&gt;&amp;lt;F5&amp;gt;&lt;/code&gt; once after writing the magic comment. After
+that, the file will get auto-encrypted whenever we save with &lt;code&gt;C-x C-s&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;If you have a whole directory of files you'd like to encrypt (like a personal
+diary), it's best to leverage emacs' '&lt;a href=&quot;https://www.emacswiki.org/emacs/DirectoryVariables&quot;&gt;directory
+variables&lt;/a&gt;' feature. Just
+pop a file named &lt;code&gt;.dir-locals.el&lt;/code&gt; in the directory, and inside it, put:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;(
+ (nil . ((epa-file-encrypt-to . (&quot;your.publickey@email.com&quot;))))
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This will tell EasyPG to encrypt all files you save in this directory with
+&quot;your.publickey@email.com&quot;. (The &lt;code&gt;nil&lt;/code&gt; in the car of the first pair stands for
+&quot;any major mode&quot;).&lt;/p&gt;
+
+&lt;h2&gt;Decrypting your text files&lt;/h2&gt;
+
+&lt;p&gt;This is easiest if you save all your encrypted files as &lt;code&gt;XYZ.gpg&lt;/code&gt;, or
+&lt;code&gt;XYZ.gpg.asc&lt;/code&gt;, and then set the following variable:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;  (setq epa-file-name-regexp &quot;\\.\\(gpg\\|\\asc\\)\\(~\\|\\.~[0-9]+~\\)?\\'&quot;)
+  (epa-file-name-regexp-update)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Upon opening an encrypted file, Emacs (or your window manager) will pop up a
+modal window asking for your private key passphrase. This only has to be done
+once in a while, as the passphrase is cached in memory by gpg-agent for some
+time.&lt;/p&gt;
+
+&lt;h2&gt;And now, the legder&lt;/h2&gt;
+
+&lt;p&gt;This is a sample journal file from hledger's documentation:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;; A sample journal file. This is a comment.
+
+2008/01/01 income               
+    assets:bank:checking  $1    
+    income:salary        $-1    
+
+2008/06/01 gift
+    assets:bank:checking  $1    
+    income:gifts         $-1    
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As noted above, we'll just need to furnish it with EasyPG's magic variable:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;; -*- epa-file-encrypt-to: (&quot;your.publickey@email.com&quot;);  -*-
+; A sample journal file. This is a comment.
+
+2008/01/01 income               
+    assets:bank:checking  $1    
+    income:salary        $-1    
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Then, hit &lt;code&gt;&amp;lt;F5&amp;gt;&lt;/code&gt;, and then save the file as &lt;code&gt;~/hledger.journal.gpg.asc&lt;/code&gt;. Close
+it, and then verify that it's encrypted via:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ cat ~/hledger.journal.gpg.asc
+-----BEGIN PGP MESSAGE-----
+Version: GnuPG v2
+
+hBENO538+KYKbPGzAQf9HlZ7eFwE/V/kCwCRCzA2B1Zvut3MJONtIZ8O0bcAyRLS
+xfZt9wlg4v5yZtGji6SH73yzlxdz2VZRjkTb7neVIUz/ySJlrzoS+R1SPEBvBHy+
+W5j/+bitbx/gqWMwCC3cn2geSY86mnKmAFdtbFeD56Zyb7sgv0KAghrKUhDUU+lc
+Lfl920jsryYu+VjDohJDJyuLGv9j4o62i47D4tQIwSGhFYZArLmqs6et/wKKZWIr
+(...)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, we'll tell hledger to always use this file for generating reports.  I keep
+a separate script named &lt;code&gt;hl&lt;/code&gt;, containing the following:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#!/bin/sh
+gpg2 --decrypt $HOME/hledger.journal.gpg.asc 2&amp;gt;/dev/null | hledger -f- &quot;$@&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;You can now use &lt;code&gt;hl reg expenses&lt;/code&gt; to feel bad about your wastefulness.&lt;/p&gt;
+
+&lt;p&gt;Happy organizing!&lt;/p&gt;
+
+	</description>
         <pubDate>Mon, 18 Jul 2016 00:00:00 -0700</pubDate>
         <link>http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</guid>
