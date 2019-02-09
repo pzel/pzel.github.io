@@ -25,7 +25,7 @@ a source address as part of an initializatioan procedure
 by which the host learns its own IP address.&lt;/p&gt;&lt;/blockquote&gt;
 
 	</description>
-        <pubDate>Sat, 21 Jul 2018 00:00:00 -0700</pubDate>
+        <pubDate>Sat, 21 Jul 2018 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</guid>
       </item>
@@ -42,7 +42,7 @@ make sure your user is part of the &lt;code&gt;lpadmin&lt;/code&gt; group.&lt;/p
 &lt;p&gt;Log out, log in again and enjoy your printer.&lt;/p&gt;
 
 	</description>
-        <pubDate>Tue, 27 Mar 2018 00:00:00 -0700</pubDate>
+        <pubDate>Tue, 27 Mar 2018 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</guid>
       </item>
@@ -101,7 +101,7 @@ function&lt;/a&gt;
 in Haskell does indeed have the type &lt;code&gt;IO Hostname&lt;/code&gt;.&lt;/p&gt;
 
 	</description>
-        <pubDate>Wed, 21 Mar 2018 00:00:00 -0700</pubDate>
+        <pubDate>Wed, 21 Mar 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</guid>
       </item>
@@ -138,7 +138,7 @@ expansion:&lt;/p&gt;
 function&lt;/a&gt; from the &lt;code&gt;File&lt;/code&gt; module.&lt;/p&gt;
 
 	</description>
-        <pubDate>Tue, 20 Mar 2018 00:00:00 -0700</pubDate>
+        <pubDate>Tue, 20 Mar 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</guid>
       </item>
@@ -250,7 +250,7 @@ fold_step(Fun, {Acc, Req}) -&amp;gt;
 &lt;p&gt;Cheers!&lt;/p&gt;
 
 	</description>
-        <pubDate>Mon, 05 Feb 2018 00:00:00 -0800</pubDate>
+        <pubDate>Mon, 05 Feb 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</guid>
       </item>
@@ -315,7 +315,7 @@ your Erlang/OTP version. Map-based specs were added in &lt;a href=&quot;http://w
 18&lt;/a&gt;.&lt;/p&gt;
 
 	</description>
-        <pubDate>Fri, 02 Feb 2018 00:00:00 -0800</pubDate>
+        <pubDate>Fri, 02 Feb 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</guid>
       </item>
@@ -342,7 +342,7 @@ your Erlang/OTP version. Map-based specs were added in &lt;a href=&quot;http://w
 for educational purposes.&lt;/p&gt;
 
 	</description>
-        <pubDate>Tue, 30 Jan 2018 00:00:00 -0800</pubDate>
+        <pubDate>Tue, 30 Jan 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</guid>
       </item>
@@ -492,7 +492,7 @@ programming.&lt;/p&gt;
 &lt;p&gt;(Edited on 2018-01-30 for spelling)&lt;/p&gt;
 
 	</description>
-        <pubDate>Sat, 27 Jan 2018 00:00:00 -0800</pubDate>
+        <pubDate>Sat, 27 Jan 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</guid>
       </item>
@@ -558,7 +558,7 @@ basic data structures (lists, tuples, atoms, numbers) is in order?&lt;/p&gt;&lt;
 email.&lt;/p&gt;
 
 	</description>
-        <pubDate>Mon, 19 Jun 2017 00:00:00 -0700</pubDate>
+        <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
       </item>
@@ -690,7 +690,7 @@ gpg2 --decrypt $HOME/hledger.journal.gpg.asc 2&amp;gt;/dev/null | hledger -f- &q
 &lt;p&gt;Happy organizing!&lt;/p&gt;
 
 	</description>
-        <pubDate>Mon, 18 Jul 2016 00:00:00 -0700</pubDate>
+        <pubDate>Mon, 18 Jul 2016 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</guid>
       </item>
