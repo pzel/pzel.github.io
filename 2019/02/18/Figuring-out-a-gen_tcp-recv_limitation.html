@@ -1,0 +1,438 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Figuring out a gen_tcp:recv limitation :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: none; }
+  img.always-show { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+code { font-size: smaller; }
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd; background-color: #fffff8; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; background-color: #fffff8; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Figuring out a gen_tcp:recv limitation</h1>
+  <small class="post-date">2019-02-18</small>
+  <div class="heading">
+    <p>In which a suprisingly pernicious framed payload leads to OTP spelunking.</p>
+    <p><span class="tags">
+  
+  <span class="tag">erlang</span>
+  
+  <span class="tag">gen_tcp</span>
+  
+  <span class="tag">framing</span>
+  
+</span>
+</p>
+  </div>
+  <h2>The setup: sending a string over TCP</h2>
+
+<p>Let's say you want to send the ASCII string <code>Fiat lux!</code> to an Erlang process
+listening on the other side of a TCP connection. Not a big deal, right?</p>
+
+<p>Our sending application is written in Python. Here's what it might look like:</p>
+
+<pre><code class="python">#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(("127.0.0.1", 7777))
+data_to_send = b"Fiat Lux!"
+sock.sendall(data_to_send)
+</code></pre>
+
+<p>... and here's the receiving Erlang application:</p>
+
+<pre><code class="erlang">#!/usr/bin/env escript
+main(_) -&gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, String} = gen_tcp:recv(Sock, 0),
+  io:format("Got string: ~ts~n", [String]),
+  erlang:halt(0).
+</code></pre>
+
+<p>If we start the Erlang receiver (in shell 1), then run the Python sender (in
+shell2), we should see the receiver emit the following:</p>
+
+<pre><code class="shell">$ ./receive.escript
+Got string: Fiat Lux!
+$
+</code></pre>
+
+<p>As you can see, we optimistically sent all our data over TCP from the Python
+app, and received all that data, intact, on the other side. What's important
+here is that our Erlang socket is in <a href="http://erlang.org/doc/man/inet.html#ghlink-setopts-2-id215039">passive
+mode</a>, which
+means that incoming TCP data needs to be <code>recv</code>'d off of the socket. The second
+argument in <code>gen_tcp:recv(Sock, 0)</code> means that we want to read however many
+bytes are available to be read from the OS's network stack. In this case all
+our data was kindly provided to us in one nice chunk.</p>
+
+<p>Success! Our real production application will be dealing with much bigger
+pieces of data, so it behooves us to test with a larger payload. Let's try a
+thousand characters.</p>
+
+<h2>More data</h2>
+
+<p>We update the sender and receiver as follows:</p>
+
+<pre><code class="python">#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(("127.0.0.1", 7777))
+data_to_send = b'a' * 1000
+sock.sendall(data_to_send)
+</code></pre>
+
+<pre><code class="erlang">#!/usr/bin/env escript
+main(_) -&gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reusaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, String} = gen_tcp:recv(Sock, 0),
+  io:format("Got string of length: ~p~n", [byte_size(String)]),
+  erlang:halt(0).
+</code></pre>
+
+<p>When we run our experiment, we see that our Erlang process does indeed get all
+<code>1000</code> bytes. Let's add one more zero to the payload.</p>
+
+<pre><code class="python">#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(("127.0.0.1", 7777))
+data_to_send = b'a' * 10000
+sock.sendall(data_to_send)
+</code></pre>
+
+<p>And we hit our first snag!</p>
+
+<pre><code>Got string of length: 1460
+</code></pre>
+
+<p>Aha! Our <code>gen_tcp:recv(Sock, 0)</code> call asked the OS to give us whatever bytes it
+had ready in the TCP buffer, and so that's what we received. TCP is a streaming
+protocol, and there is no guarantee that a given sequence of bytes received on
+the socket will correspond to a logical message in our application layer. The
+low-effort way of handling this issue is by prefixing every logical message on
+the TCP socket with a known-width integer, representing the length of the
+message in bytes. "Low-effort" sounds like the kind of thing you put in place
+when the dealine was yesterday. Onward!</p>
+
+<p>Let's take our initial string as an example. Instead of sending the following
+sequence of <code>9</code> bytes on the wire:</p>
+
+<pre><code>Ascii:     F    i   a    t   ␣    l    u    x   !
+
+Binary:   70  105  97  116  32  108  117  120  33
+</code></pre>
+
+<p>We'd first prefix it with an 32-bit integer representing it size in bytes, and
+then append the binary, giving <code>13</code> bytes in total.</p>
+
+<pre><code>Ascii:     ␀   ␀  ␀   ␉  F    i   a    t   ␣    l    u    x   !
+
+Binary:    0   0   0   9  70  105  97  116  32  108  117  120  33
+</code></pre>
+
+<p>Now, the first 4 bytes that reach our receiver can be interpreted as the length
+of the next logical message. We can use this number to tell <code>gen_tcp:recv</code> how
+many bytes we want to read from the socket.</p>
+
+<p>To encode an integer into 32 bits, we'll use <a href="[https://docs.python.org/3/library/struct.html">Python's struct module</a>. <code>struct.pack("&gt;I", 9)</code> will do
+exactly what we want: encode a 32-bit unsigned Integer (<code>9</code>, in this case) in
+Big-endian (or network) order.</p>
+
+<pre><code class="python">#!/usr/bin/env python3
+import socket
+import struct
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(("127.0.0.1", 7777))
+data_to_send = b'a' * 10000
+header = struct.pack("&gt;I", len(data_to_send))
+sock.sendall(header + data_to_send)
+</code></pre>
+
+<p>On the decoding side, we'll break up the receiving into two parts:</p>
+
+<p>1) Read 4 bytes from the socket, interpret these as <code>Header</code>, a 32-bit unsigned
+int.</p>
+
+<p>2) Read <code>Header</code> bytes off the socket. The receiving Erlang process will
+'block' until that much data is read (or until the other side disconnects). The
+received bytes constitute a logical message.</p>
+
+<pre><code>#!/usr/bin/env escript
+main(_) -&gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, &lt;&lt;Header:32&gt;&gt;} = gen_tcp:recv(Sock, 4),
+  io:format("Got header: ~p~n", [Header]),
+  {ok, String} = gen_tcp:recv(Sock, Header),
+  io:format("Got string of length: ~p~n", [byte_size(String)]),
+  erlang:halt(0).
+</code></pre>
+
+<p>When we run our scripts, we'll see the Erlang receiver print the following:</p>
+
+<pre><code>Got header: 10000
+Got string of length: 10000
+</code></pre>
+
+<p>Success! But apparently, our application needs to handle messages much bigger
+than 10 kilobytes. Let's see how far we can take this approach.</p>
+
+<h2>Yet more data</h2>
+
+<p>Can we do a megabyte? Ten? A hundred? Let's find out, using the following loop
+for the sender:</p>
+
+<pre><code class="python">#!/usr/bin/env python3
+import socket
+import struct
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect(("127.0.0.1", 7777))
+for l in [1000, 1000*1000, 10*1000*1000, 100*1000*1000]:
+    data_to_send = b'a' * l
+    header = struct.pack("&gt;I", len(data_to_send))
+    sock.sendall(header + data_to_send)
+sock.close()
+</code></pre>
+
+<p>...and a recursive receive function for the receiver:</p>
+
+<pre><code class="erlang">#!/usr/bin/env escript
+recv(Sock) -&gt;
+  {ok, &lt;&lt;Header:32&gt;&gt;} = gen_tcp:recv(Sock, 4),
+  io:format("Got header: ~p~n", [Header]),
+  {ok, String} = gen_tcp:recv(Sock, Header),
+  io:format("Got string of length: ~p~n", [byte_size(String)]),
+  recv(Sock).
+
+main(_) -&gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  recv(Sock).
+</code></pre>
+
+<p>Running this will lead to our Erlang process crashing with an interesting message:</p>
+
+<pre><code>Got header: 1000
+Got string of length: 1000
+Got header: 1000000
+Got string of length: 1000000
+Got header: 10000000
+Got string of length: 10000000
+Got header: 100000000
+escript: exception error: no match of right hand side value {error,enomem}
+</code></pre>
+
+<p><code>enomem</code> looks like a strange kind of error indeed. It happens when we get the
+100-megabyte header and attempt to read that data off the socket. Let's go spelunking to find out where this error is coming from.</p>
+
+<h2>Spelunking for <code>{error, enomem}</code></h2>
+
+<p>First, let's take a look at <a href="https://github.com/erlang/otp/blob/master/lib/kernel/src/gen_tcp.erl#L302-L308">what <code>gen_tcp:recv</code>
+does</a>
+with its arguments. It seems that it checks <code>inet_db</code> to find our socket, and
+calls <code>recv</code> on that socket.</p>
+
+<p>OK, let's check out
+<a href="https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_db.erl#L783-L790"><code>inet_db</code></a>. Looks
+like it retrieves module information stored via <code>erlang:set_port_data</code>, <a href="https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_db.erl#L774-L778">in the call above</a>.</p>
+
+<p>A grepping for a call to <code>inet_db:register_module</code> reveals that multiple modules register themselves this way. Among these, we find one of particular interest.</p>
+
+<pre><code>lib/kernel/src/inet_tcp.erl
+169:        inet_db:register_socket(S, ?MODULE),
+177:        inet_db:register_socket(S, ?MODULE),
+</code></pre>
+
+<p>Let's see <a href="https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_tcp.erl#L75-L79">how inet_tcp.erl implements recv</a>. Hmm, just a pass-through to <a href="https://github.com/erlang/otp/blob/master/erts/preloaded/src/prim_inet.erl#L675-L708"><code>prim_inet</code></a>. Let's look there.</p>
+
+<p>It seems here that our erlang call-chain bottoms out in a call to <code>ctl_cmd</code>,
+which is itself a wrapper to <code>erlang:port_control</code>, sending control data over
+into C-land. We'll need to look at out TCP port driver to figure out what comes
+next.</p>
+
+<pre><code>    case ctl_cmd(S, ?TCP_REQ_RECV, [enc_time(Time), ?int32(Length)])
+</code></pre>
+
+<p>A slight hitch is finding the source code for this driver. Perhaps the marco
+<code>?TCP_REQ_RECV</code> can help us find what we're after?</p>
+
+<pre><code>$  rg 'TCP_REQ_RECV'
+lib/kernel/src/inet_int.hrl
+100:-define(TCP_REQ_RECV,           42).
+
+erts/preloaded/src/prim_inet.erl
+584:    case ctl_cmd(S, ?TCP_REQ_RECV, [enc_time(Time), ?int32(Length)]) of
+
+erts/emulator/drivers/common/inet_drv.c
+735:#define TCP_REQ_RECV           42
+10081:    case TCP_REQ_RECV: {
+10112:  if (enq_async(INETP(desc), tbuf, TCP_REQ_RECV) &lt; 0)
+</code></pre>
+
+<p>A-ha! <a href="https://github.com/erlang/otp/blob/master/erts/emulator/drivers/common/inet_drv.c#L10200-L10249"><code>inet_drv.c</code></a>, here we come!</p>
+
+<p>Indeed, this C function here, responsible for the actual call to <code>sock_select</code>,
+will proactively reject recv calls where the requested payload size <code>n</code> is bigger than
+<code>TCP_MAX_PACKET_SIZE</code>:</p>
+
+<pre><code>if (n &gt; TCP_MAX_PACKET_SIZE)
+    return ctl_error(ENOMEM, rbuf, rsize);
+</code></pre>
+
+<p>and <code>TCP_MAX_PACKET_SIZE</code> itself is <a href="https://github.com/erlang/otp/blob/master/erts/emulator/drivers/common/inet_drv.c#L1143">defined in the same source file</a> as:</p>
+
+<pre><code>#define TCP_MAX_PACKET_SIZE 0x4000000 /* 64 M */
+</code></pre>
+
+<p>thereby explaining our weird ENOMEM error.</p>
+
+<p>Now, how to solve this conundrum? A possible approach would be to maintain some
+state in our receiver, optimistically read as much data as possible, and then
+try to reconstruct the logical messages, perhaps using something like
+<a href="http://erlang.org/doc/man/erlang.html#ghlink-decode_packet-3-id291848">erlang:decode_packet</a>
+to take care of the book-keeping for us.</p>
+
+<h2>Taking a step back — and finding a clean solution</h2>
+
+<p>Before we jump to writing more code, let's consider our position. We're trying
+to read a framed message off of a TCP stream. It's been done thousands of
+times before. Surely the sagely developers whose combined experience is encoded
+in OTP have thought of an elegant solution to this problem?</p>
+
+<p>It turns out that if you read the <a href="https://erldocs.com/current/kernel/inet.html?i=0&amp;search=inet:seto#setopts/2">very long man entry for
+inet:setopts</a>,
+you'll eventually come across this revealing paragraph:</p>
+
+<blockquote><p>{packet, PacketType}(TCP/IP sockets)</p>
+
+<p>Defines the type of packets to use for a socket. Possible values:</p>
+
+<p>raw | 0</p>
+
+<p>No packaging is done.</p>
+
+<p>1 | 2 | 4</p>
+
+<p>Packets consist of a header specifying the number of bytes in the packet, followed by that number of bytes. The header length can be one, two, or four bytes, and containing an unsigned integer in big-endian byte order. Each send operation generates the header, and the header is stripped off on each receive operation.</p>
+
+<p>The 4-byte header is limited to 2Gb.</p></blockquote>
+
+<p><strong><em>Packets consist of a header specifying the number of bytes in the packet, followed by that number of bytes.</em></strong> Yes indeed they do! Let's try it out!</p>
+
+<pre><code>#!/usr/bin/env escript
+recv(Sock) -&gt;
+  {ok, String} = gen_tcp:recv(Sock,0),
+  io:format("Got string of length: ~p~n", [byte_size(String)]),
+  recv(Sock).
+
+main(_) -&gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}, {packet, 4}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  recv(Sock).
+</code></pre>
+
+<p>And the output is:</p>
+
+<pre><code>Got string of length: 1000
+Got string of length: 1000000
+Got string of length: 10000000
+Got string of length: 100000000
+escript: exception error: no match of right hand side value {error,closed}
+</code></pre>
+
+<p>Problem solved! (The last error is from a <code>recv</code> call on the socket after it
+has been closed from the Python side). Turns out that our TCP framing pattern
+is in fact so common, it's been subsumed by OTP as a mere <em>option</em> for gen_tcp
+sockets!</p>
+
+<p>If you'd like to know why setting this option lets us sidestep the
+<code>TCP_MAX_PACKET_SIZE</code> check, I encourage you to take a dive into the OTP
+codebase and find out. It's suprisingly easy to navigate, and full of great
+code.</p>
+
+<p>And if you ever find yourself fighting a networking problem using brute-force
+in Erlang, please consider the question: "Peraphs this was solved long ago and
+the solution lives in OTP?" Chances are, the answer is yes!</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2018/07/21/sending-0000-doesnt-make-sense.html">⇦Sending 0.0.0.0 doesn't make sense</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

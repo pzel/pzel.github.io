@@ -7,6 +7,348 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Figuring out a gen_tcp:recv limitation</title>
+        <description>In which a suprisingly pernicious framed payload leads to OTP spelunking.
+	&lt;h2&gt;The setup: sending a string over TCP&lt;/h2&gt;
+
+&lt;p&gt;Let's say you want to send the ASCII string &lt;code&gt;Fiat lux!&lt;/code&gt; to an Erlang process
+listening on the other side of a TCP connection. Not a big deal, right?&lt;/p&gt;
+
+&lt;p&gt;Our sending application is written in Python. Here's what it might look like:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;python&quot;&gt;#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;127.0.0.1&quot;, 7777))
+data_to_send = b&quot;Fiat Lux!&quot;
+sock.sendall(data_to_send)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;... and here's the receiving Erlang application:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;erlang&quot;&gt;#!/usr/bin/env escript
+main(_) -&amp;gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, String} = gen_tcp:recv(Sock, 0),
+  io:format(&quot;Got string: ~ts~n&quot;, [String]),
+  erlang:halt(0).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;If we start the Erlang receiver (in shell 1), then run the Python sender (in
+shell2), we should see the receiver emit the following:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;shell&quot;&gt;$ ./receive.escript
+Got string: Fiat Lux!
+$
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;As you can see, we optimistically sent all our data over TCP from the Python
+app, and received all that data, intact, on the other side. What's important
+here is that our Erlang socket is in &lt;a href=&quot;http://erlang.org/doc/man/inet.html#ghlink-setopts-2-id215039&quot;&gt;passive
+mode&lt;/a&gt;, which
+means that incoming TCP data needs to be &lt;code&gt;recv&lt;/code&gt;'d off of the socket. The second
+argument in &lt;code&gt;gen_tcp:recv(Sock, 0)&lt;/code&gt; means that we want to read however many
+bytes are available to be read from the OS's network stack. In this case all
+our data was kindly provided to us in one nice chunk.&lt;/p&gt;
+
+&lt;p&gt;Success! Our real production application will be dealing with much bigger
+pieces of data, so it behooves us to test with a larger payload. Let's try a
+thousand characters.&lt;/p&gt;
+
+&lt;h2&gt;More data&lt;/h2&gt;
+
+&lt;p&gt;We update the sender and receiver as follows:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;python&quot;&gt;#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;127.0.0.1&quot;, 7777))
+data_to_send = b'a' * 1000
+sock.sendall(data_to_send)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&quot;erlang&quot;&gt;#!/usr/bin/env escript
+main(_) -&amp;gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reusaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, String} = gen_tcp:recv(Sock, 0),
+  io:format(&quot;Got string of length: ~p~n&quot;, [byte_size(String)]),
+  erlang:halt(0).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;When we run our experiment, we see that our Erlang process does indeed get all
+&lt;code&gt;1000&lt;/code&gt; bytes. Let's add one more zero to the payload.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;python&quot;&gt;#!/usr/bin/env python3
+import socket
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;127.0.0.1&quot;, 7777))
+data_to_send = b'a' * 10000
+sock.sendall(data_to_send)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And we hit our first snag!&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Got string of length: 1460
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Aha! Our &lt;code&gt;gen_tcp:recv(Sock, 0)&lt;/code&gt; call asked the OS to give us whatever bytes it
+had ready in the TCP buffer, and so that's what we received. TCP is a streaming
+protocol, and there is no guarantee that a given sequence of bytes received on
+the socket will correspond to a logical message in our application layer. The
+low-effort way of handling this issue is by prefixing every logical message on
+the TCP socket with a known-width integer, representing the length of the
+message in bytes. &quot;Low-effort&quot; sounds like the kind of thing you put in place
+when the dealine was yesterday. Onward!&lt;/p&gt;
+
+&lt;p&gt;Let's take our initial string as an example. Instead of sending the following
+sequence of &lt;code&gt;9&lt;/code&gt; bytes on the wire:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Ascii:     F    i   a    t   ␣    l    u    x   !
+
+Binary:   70  105  97  116  32  108  117  120  33
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;We'd first prefix it with an 32-bit integer representing it size in bytes, and
+then append the binary, giving &lt;code&gt;13&lt;/code&gt; bytes in total.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Ascii:     ␀   ␀  ␀   ␉  F    i   a    t   ␣    l    u    x   !
+
+Binary:    0   0   0   9  70  105  97  116  32  108  117  120  33
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, the first 4 bytes that reach our receiver can be interpreted as the length
+of the next logical message. We can use this number to tell &lt;code&gt;gen_tcp:recv&lt;/code&gt; how
+many bytes we want to read from the socket.&lt;/p&gt;
+
+&lt;p&gt;To encode an integer into 32 bits, we'll use &lt;a href=&quot;[https://docs.python.org/3/library/struct.html&quot;&gt;Python's struct module&lt;/a&gt;. &lt;code&gt;struct.pack(&quot;&amp;gt;I&quot;, 9)&lt;/code&gt; will do
+exactly what we want: encode a 32-bit unsigned Integer (&lt;code&gt;9&lt;/code&gt;, in this case) in
+Big-endian (or network) order.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;python&quot;&gt;#!/usr/bin/env python3
+import socket
+import struct
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;127.0.0.1&quot;, 7777))
+data_to_send = b'a' * 10000
+header = struct.pack(&quot;&amp;gt;I&quot;, len(data_to_send))
+sock.sendall(header + data_to_send)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;On the decoding side, we'll break up the receiving into two parts:&lt;/p&gt;
+
+&lt;p&gt;1) Read 4 bytes from the socket, interpret these as &lt;code&gt;Header&lt;/code&gt;, a 32-bit unsigned
+int.&lt;/p&gt;
+
+&lt;p&gt;2) Read &lt;code&gt;Header&lt;/code&gt; bytes off the socket. The receiving Erlang process will
+'block' until that much data is read (or until the other side disconnects). The
+received bytes constitute a logical message.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#!/usr/bin/env escript
+main(_) -&amp;gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  {ok, &amp;lt;&amp;lt;Header:32&amp;gt;&amp;gt;} = gen_tcp:recv(Sock, 4),
+  io:format(&quot;Got header: ~p~n&quot;, [Header]),
+  {ok, String} = gen_tcp:recv(Sock, Header),
+  io:format(&quot;Got string of length: ~p~n&quot;, [byte_size(String)]),
+  erlang:halt(0).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;When we run our scripts, we'll see the Erlang receiver print the following:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Got header: 10000
+Got string of length: 10000
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Success! But apparently, our application needs to handle messages much bigger
+than 10 kilobytes. Let's see how far we can take this approach.&lt;/p&gt;
+
+&lt;h2&gt;Yet more data&lt;/h2&gt;
+
+&lt;p&gt;Can we do a megabyte? Ten? A hundred? Let's find out, using the following loop
+for the sender:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;python&quot;&gt;#!/usr/bin/env python3
+import socket
+import struct
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.connect((&quot;127.0.0.1&quot;, 7777))
+for l in [1000, 1000*1000, 10*1000*1000, 100*1000*1000]:
+    data_to_send = b'a' * l
+    header = struct.pack(&quot;&amp;gt;I&quot;, len(data_to_send))
+    sock.sendall(header + data_to_send)
+sock.close()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;...and a recursive receive function for the receiver:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;erlang&quot;&gt;#!/usr/bin/env escript
+recv(Sock) -&amp;gt;
+  {ok, &amp;lt;&amp;lt;Header:32&amp;gt;&amp;gt;} = gen_tcp:recv(Sock, 4),
+  io:format(&quot;Got header: ~p~n&quot;, [Header]),
+  {ok, String} = gen_tcp:recv(Sock, Header),
+  io:format(&quot;Got string of length: ~p~n&quot;, [byte_size(String)]),
+  recv(Sock).
+
+main(_) -&amp;gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  recv(Sock).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Running this will lead to our Erlang process crashing with an interesting message:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Got header: 1000
+Got string of length: 1000
+Got header: 1000000
+Got string of length: 1000000
+Got header: 10000000
+Got string of length: 10000000
+Got header: 100000000
+escript: exception error: no match of right hand side value {error,enomem}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;code&gt;enomem&lt;/code&gt; looks like a strange kind of error indeed. It happens when we get the
+100-megabyte header and attempt to read that data off the socket. Let's go spelunking to find out where this error is coming from.&lt;/p&gt;
+
+&lt;h2&gt;Spelunking for &lt;code&gt;{error, enomem}&lt;/code&gt;&lt;/h2&gt;
+
+&lt;p&gt;First, let's take a look at &lt;a href=&quot;https://github.com/erlang/otp/blob/master/lib/kernel/src/gen_tcp.erl#L302-L308&quot;&gt;what &lt;code&gt;gen_tcp:recv&lt;/code&gt;
+does&lt;/a&gt;
+with its arguments. It seems that it checks &lt;code&gt;inet_db&lt;/code&gt; to find our socket, and
+calls &lt;code&gt;recv&lt;/code&gt; on that socket.&lt;/p&gt;
+
+&lt;p&gt;OK, let's check out
+&lt;a href=&quot;https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_db.erl#L783-L790&quot;&gt;&lt;code&gt;inet_db&lt;/code&gt;&lt;/a&gt;. Looks
+like it retrieves module information stored via &lt;code&gt;erlang:set_port_data&lt;/code&gt;, &lt;a href=&quot;https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_db.erl#L774-L778&quot;&gt;in the call above&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;A grepping for a call to &lt;code&gt;inet_db:register_module&lt;/code&gt; reveals that multiple modules register themselves this way. Among these, we find one of particular interest.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;lib/kernel/src/inet_tcp.erl
+169:        inet_db:register_socket(S, ?MODULE),
+177:        inet_db:register_socket(S, ?MODULE),
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Let's see &lt;a href=&quot;https://github.com/erlang/otp/blob/master/lib/kernel/src/inet_tcp.erl#L75-L79&quot;&gt;how inet_tcp.erl implements recv&lt;/a&gt;. Hmm, just a pass-through to &lt;a href=&quot;https://github.com/erlang/otp/blob/master/erts/preloaded/src/prim_inet.erl#L675-L708&quot;&gt;&lt;code&gt;prim_inet&lt;/code&gt;&lt;/a&gt;. Let's look there.&lt;/p&gt;
+
+&lt;p&gt;It seems here that our erlang call-chain bottoms out in a call to &lt;code&gt;ctl_cmd&lt;/code&gt;,
+which is itself a wrapper to &lt;code&gt;erlang:port_control&lt;/code&gt;, sending control data over
+into C-land. We'll need to look at out TCP port driver to figure out what comes
+next.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;    case ctl_cmd(S, ?TCP_REQ_RECV, [enc_time(Time), ?int32(Length)])
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A slight hitch is finding the source code for this driver. Perhaps the marco
+&lt;code&gt;?TCP_REQ_RECV&lt;/code&gt; can help us find what we're after?&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$  rg 'TCP_REQ_RECV'
+lib/kernel/src/inet_int.hrl
+100:-define(TCP_REQ_RECV,           42).
+
+erts/preloaded/src/prim_inet.erl
+584:    case ctl_cmd(S, ?TCP_REQ_RECV, [enc_time(Time), ?int32(Length)]) of
+
+erts/emulator/drivers/common/inet_drv.c
+735:#define TCP_REQ_RECV           42
+10081:    case TCP_REQ_RECV: {
+10112:  if (enq_async(INETP(desc), tbuf, TCP_REQ_RECV) &amp;lt; 0)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;A-ha! &lt;a href=&quot;https://github.com/erlang/otp/blob/master/erts/emulator/drivers/common/inet_drv.c#L10200-L10249&quot;&gt;&lt;code&gt;inet_drv.c&lt;/code&gt;&lt;/a&gt;, here we come!&lt;/p&gt;
+
+&lt;p&gt;Indeed, this C function here, responsible for the actual call to &lt;code&gt;sock_select&lt;/code&gt;,
+will proactively reject recv calls where the requested payload size &lt;code&gt;n&lt;/code&gt; is bigger than
+&lt;code&gt;TCP_MAX_PACKET_SIZE&lt;/code&gt;:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;if (n &amp;gt; TCP_MAX_PACKET_SIZE)
+    return ctl_error(ENOMEM, rbuf, rsize);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;and &lt;code&gt;TCP_MAX_PACKET_SIZE&lt;/code&gt; itself is &lt;a href=&quot;https://github.com/erlang/otp/blob/master/erts/emulator/drivers/common/inet_drv.c#L1143&quot;&gt;defined in the same source file&lt;/a&gt; as:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#define TCP_MAX_PACKET_SIZE 0x4000000 /* 64 M */
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;thereby explaining our weird ENOMEM error.&lt;/p&gt;
+
+&lt;p&gt;Now, how to solve this conundrum? A possible approach would be to maintain some
+state in our receiver, optimistically read as much data as possible, and then
+try to reconstruct the logical messages, perhaps using something like
+&lt;a href=&quot;http://erlang.org/doc/man/erlang.html#ghlink-decode_packet-3-id291848&quot;&gt;erlang:decode_packet&lt;/a&gt;
+to take care of the book-keeping for us.&lt;/p&gt;
+
+&lt;h2&gt;Taking a step back — and finding a clean solution&lt;/h2&gt;
+
+&lt;p&gt;Before we jump to writing more code, let's consider our position. We're trying
+to read a framed message off of a TCP stream. It's been done thousands of
+times before. Surely the sagely developers whose combined experience is encoded
+in OTP have thought of an elegant solution to this problem?&lt;/p&gt;
+
+&lt;p&gt;It turns out that if you read the &lt;a href=&quot;https://erldocs.com/current/kernel/inet.html?i=0&amp;amp;search=inet:seto#setopts/2&quot;&gt;very long man entry for
+inet:setopts&lt;/a&gt;,
+you'll eventually come across this revealing paragraph:&lt;/p&gt;
+
+&lt;blockquote&gt;&lt;p&gt;{packet, PacketType}(TCP/IP sockets)&lt;/p&gt;
+
+&lt;p&gt;Defines the type of packets to use for a socket. Possible values:&lt;/p&gt;
+
+&lt;p&gt;raw | 0&lt;/p&gt;
+
+&lt;p&gt;No packaging is done.&lt;/p&gt;
+
+&lt;p&gt;1 | 2 | 4&lt;/p&gt;
+
+&lt;p&gt;Packets consist of a header specifying the number of bytes in the packet, followed by that number of bytes. The header length can be one, two, or four bytes, and containing an unsigned integer in big-endian byte order. Each send operation generates the header, and the header is stripped off on each receive operation.&lt;/p&gt;
+
+&lt;p&gt;The 4-byte header is limited to 2Gb.&lt;/p&gt;&lt;/blockquote&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;Packets consist of a header specifying the number of bytes in the packet, followed by that number of bytes.&lt;/em&gt;&lt;/strong&gt; Yes indeed they do! Let's try it out!&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;#!/usr/bin/env escript
+recv(Sock) -&amp;gt;
+  {ok, String} = gen_tcp:recv(Sock,0),
+  io:format(&quot;Got string of length: ~p~n&quot;, [byte_size(String)]),
+  recv(Sock).
+
+main(_) -&amp;gt;
+  {ok, L} = gen_tcp:listen(7777, [binary, {active, false}, {reuseaddr, true}, {packet, 4}]),
+  {ok, Sock} = gen_tcp:accept(L),
+  recv(Sock).
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;And the output is:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;Got string of length: 1000
+Got string of length: 1000000
+Got string of length: 10000000
+Got string of length: 100000000
+escript: exception error: no match of right hand side value {error,closed}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Problem solved! (The last error is from a &lt;code&gt;recv&lt;/code&gt; call on the socket after it
+has been closed from the Python side). Turns out that our TCP framing pattern
+is in fact so common, it's been subsumed by OTP as a mere &lt;em&gt;option&lt;/em&gt; for gen_tcp
+sockets!&lt;/p&gt;
+
+&lt;p&gt;If you'd like to know why setting this option lets us sidestep the
+&lt;code&gt;TCP_MAX_PACKET_SIZE&lt;/code&gt; check, I encourage you to take a dive into the OTP
+codebase and find out. It's suprisingly easy to navigate, and full of great
+code.&lt;/p&gt;
+
+&lt;p&gt;And if you ever find yourself fighting a networking problem using brute-force
+in Erlang, please consider the question: &quot;Peraphs this was solved long ago and
+the solution lives in OTP?&quot; Chances are, the answer is yes!&lt;/p&gt;
+
+	</description>
+        <pubDate>Mon, 18 Feb 2019 00:00:00 +0100</pubDate>
+        <link>http://pzel.github.io/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</guid>
+      </item>
+    
+      <item>
         <title>Sending 0.0.0.0 doesn't make sense</title>
         <description>
 	&lt;p&gt;While I've grown used to specifying
@@ -561,138 +903,6 @@ email.&lt;/p&gt;
         <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
-      </item>
-    
-      <item>
-        <title>Encrypted hledger with Emacs and GnuPG</title>
-        <description>A reasonably seamless way to work with encrypted ledger files
-	&lt;p&gt;Last month, I went all-in with organizing my life in plain text. I started
-logging work and study notes in &lt;a href=&quot;http://orgmode.org&quot;&gt;org-mode&lt;/a&gt;,
-and adopted &lt;a href=&quot;http://hledger.org&quot;&gt;hledger&lt;/a&gt; for keeping track of finances.&lt;/p&gt;
-
-&lt;p&gt;Both personal notes and financial documents warrant extra security measures.
-Emacs' &lt;a href=&quot;https://www.emacswiki.org/emacs/EasyPG&quot;&gt;EasyPG&lt;/a&gt; integrates seamlessly
-with my day-to-day emacsing, so I decided to leverage the fact. Below are some
-short notes on how to get things working with the least amount of hassle.&lt;/p&gt;
-
-&lt;p&gt;This blog entry assumes the reader has &lt;a href=&quot;https://gnupg.org&quot;&gt;GnuPG&lt;/a&gt; set up on
-their machine.&lt;/p&gt;
-
-&lt;h2&gt;Encrypting your text files&lt;/h2&gt;
-
-&lt;p&gt;EasyPG has a neat way of letting you specify whose public key you'd like to
-encrypt a given file with. You can set elisp variables in a 'special' comment
-on the first line of the file:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;  ;; -*- epa-file-encrypt-to: (&quot;your.publickey@email.com&quot;);  -*-
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;When emacs reads this file from disk, it will set the buffer-local variable
-&lt;code&gt;epa-file-encrypt-to&lt;/code&gt; to your specified email address. This means that, upon
-saving, EasyPG will use that public key to encrypt the file.&lt;/p&gt;
-
-&lt;p&gt;However, until you actually save the file to disk, and then re-read it, EasyPG
-will ask you to specify whose key you'd like to encrpyt the file
-with... &lt;em&gt;Didn't we just do that via the 'magic comment'!?&lt;/em&gt;&lt;/p&gt;
-
-&lt;p&gt;There is a way around this behavior. We'll force Emacs to interpret the magic
-comment by switching to &lt;code&gt;normal-mode&lt;/code&gt; and back.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;(defun refresh-buffer ()
-  &quot;Reload file-local variables&quot;
-  (interactive)
-  (let ((v major-mode))
-    (normal-mode)
-    (funcall v)))
-
-(global-set-key (kbd &quot;&amp;lt;f5&amp;gt;&quot;) 'refresh-buffer)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Now we need to just hit &lt;code&gt;&amp;lt;F5&amp;gt;&lt;/code&gt; once after writing the magic comment. After
-that, the file will get auto-encrypted whenever we save with &lt;code&gt;C-x C-s&lt;/code&gt;.&lt;/p&gt;
-
-&lt;p&gt;If you have a whole directory of files you'd like to encrypt (like a personal
-diary), it's best to leverage emacs' '&lt;a href=&quot;https://www.emacswiki.org/emacs/DirectoryVariables&quot;&gt;directory
-variables&lt;/a&gt;' feature. Just
-pop a file named &lt;code&gt;.dir-locals.el&lt;/code&gt; in the directory, and inside it, put:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;(
- (nil . ((epa-file-encrypt-to . (&quot;your.publickey@email.com&quot;))))
-)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This will tell EasyPG to encrypt all files you save in this directory with
-&quot;your.publickey@email.com&quot;. (The &lt;code&gt;nil&lt;/code&gt; in the car of the first pair stands for
-&quot;any major mode&quot;).&lt;/p&gt;
-
-&lt;h2&gt;Decrypting your text files&lt;/h2&gt;
-
-&lt;p&gt;This is easiest if you save all your encrypted files as &lt;code&gt;XYZ.gpg&lt;/code&gt;, or
-&lt;code&gt;XYZ.gpg.asc&lt;/code&gt;, and then set the following variable:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;  (setq epa-file-name-regexp &quot;\\.\\(gpg\\|\\asc\\)\\(~\\|\\.~[0-9]+~\\)?\\'&quot;)
-  (epa-file-name-regexp-update)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Upon opening an encrypted file, Emacs (or your window manager) will pop up a
-modal window asking for your private key passphrase. This only has to be done
-once in a while, as the passphrase is cached in memory by gpg-agent for some
-time.&lt;/p&gt;
-
-&lt;h2&gt;And now, the legder&lt;/h2&gt;
-
-&lt;p&gt;This is a sample journal file from hledger's documentation:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;; A sample journal file. This is a comment.
-
-2008/01/01 income               
-    assets:bank:checking  $1    
-    income:salary        $-1    
-
-2008/06/01 gift
-    assets:bank:checking  $1    
-    income:gifts         $-1    
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;As noted above, we'll just need to furnish it with EasyPG's magic variable:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;; -*- epa-file-encrypt-to: (&quot;your.publickey@email.com&quot;);  -*-
-; A sample journal file. This is a comment.
-
-2008/01/01 income               
-    assets:bank:checking  $1    
-    income:salary        $-1    
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Then, hit &lt;code&gt;&amp;lt;F5&amp;gt;&lt;/code&gt;, and then save the file as &lt;code&gt;~/hledger.journal.gpg.asc&lt;/code&gt;. Close
-it, and then verify that it's encrypted via:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;$ cat ~/hledger.journal.gpg.asc
------BEGIN PGP MESSAGE-----
-Version: GnuPG v2
-
-hBENO538+KYKbPGzAQf9HlZ7eFwE/V/kCwCRCzA2B1Zvut3MJONtIZ8O0bcAyRLS
-xfZt9wlg4v5yZtGji6SH73yzlxdz2VZRjkTb7neVIUz/ySJlrzoS+R1SPEBvBHy+
-W5j/+bitbx/gqWMwCC3cn2geSY86mnKmAFdtbFeD56Zyb7sgv0KAghrKUhDUU+lc
-Lfl920jsryYu+VjDohJDJyuLGv9j4o62i47D4tQIwSGhFYZArLmqs6et/wKKZWIr
-(...)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Now, we'll tell hledger to always use this file for generating reports.  I keep
-a separate script named &lt;code&gt;hl&lt;/code&gt;, containing the following:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;#!/bin/sh
-gpg2 --decrypt $HOME/hledger.journal.gpg.asc 2&amp;gt;/dev/null | hledger -f- &quot;$@&quot;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;You can now use &lt;code&gt;hl reg expenses&lt;/code&gt; to feel bad about your wastefulness.&lt;/p&gt;
-
-&lt;p&gt;Happy organizing!&lt;/p&gt;
-
-	</description>
-        <pubDate>Mon, 18 Jul 2016 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2016/07/18/Encrypted-hledger-with-emacs-and-gnupg.html</guid>
       </item>
     
   </channel>
