@@ -160,7 +160,7 @@ the socket will correspond to a logical message in our application layer. The
 low-effort way of handling this issue is by prefixing every logical message on
 the TCP socket with a known-width integer, representing the length of the
 message in bytes. "Low-effort" sounds like the kind of thing you put in place
-when the dealine was yesterday. Onward!</p>
+when the deadline was yesterday. Onward!</p>
 
 <p>Let's take our initial string as an example. Instead of sending the following
 sequence of <code>9</code> bytes on the wire:</p>
