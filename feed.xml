@@ -462,7 +462,7 @@ cleared.&lt;/p&gt;
 &lt;pre&gt;&lt;code&gt; {&quot;&quot;, 0} = System.cmd(&quot;rm&quot;, [&quot;-rf&quot;, &quot;/tmp/myapp.mymodule/*&quot;])
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;If I'd have read the manual page linked above, I'd have known that:&lt;/p&gt;
+&lt;p&gt;Had I read the manual page linked above, I'd have known that:&lt;/p&gt;
 
 &lt;blockquote&gt;&lt;p&gt;wildcard expansion will not happen (unless Path.wildcard/2 is used explicitly)&lt;/p&gt;&lt;/blockquote&gt;
 
