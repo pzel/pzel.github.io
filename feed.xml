@@ -110,7 +110,7 @@ sequence of &lt;code&gt;9&lt;/code&gt; bytes on the wire:&lt;/p&gt;
 Binary:   70  105  97  116  32  108  117  120  33
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;We'd first prefix it with an 32-bit integer representing it size in bytes, and
+&lt;p&gt;We'd first prefix it with an 32-bit integer representing its size in bytes, and
 then append the binary, giving &lt;code&gt;13&lt;/code&gt; bytes in total.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;Ascii:     ␀   ␀  ␀   ␉  F    i   a    t   ␣    l    u    x   !
