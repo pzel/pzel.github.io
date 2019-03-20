@@ -13,7 +13,7 @@
 host out of a group, and another play on &lt;em&gt;all the other hosts&lt;/em&gt;.&lt;/p&gt;
 
 &lt;p&gt;The answer was found in a &lt;a href=&quot;https://grokbase.com/t/gg/ansible-project/14bkjnvrnq/how-to-define-all-hosts-but-first-in-a-group&quot;&gt;mailing group posting from 2014&lt;/a&gt;, but in case
-that service down, here's my note-to-self on how to do it.&lt;/p&gt;
+that service goes down, here's my note-to-self on how to do it.&lt;/p&gt;
 
 &lt;p&gt;Let's say you have a group of hosts called &lt;code&gt;stateful_cluster_hosts&lt;/code&gt; in your
 inventory.  You'd like to upload &lt;code&gt;files/leader_script.sh.j2&lt;/code&gt; to the first host,
