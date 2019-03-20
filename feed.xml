@@ -7,6 +7,50 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>How to grab all hosts but the first, in Ansible</title>
+        <description>
+	&lt;p&gt;Today I was trying to figure out how to run a particular ansible play on one
+host out of a group, and another play on &lt;em&gt;all the other hosts&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The answer was found in a &lt;a href=&quot;https://grokbase.com/t/gg/ansible-project/14bkjnvrnq/how-to-define-all-hosts-but-first-in-a-group&quot;&gt;mailing group posting from 2014&lt;/a&gt;, but in case
+that service down, here's my note-to-self on how to do it.&lt;/p&gt;
+
+&lt;p&gt;Let's say you have a group of hosts called &lt;code&gt;stateful_cluster_hosts&lt;/code&gt; in your
+inventory.  You'd like to upload &lt;code&gt;files/leader_script.sh.j2&lt;/code&gt; to the first host,
+and &lt;code&gt;files/follower_script.sh.j2&lt;/code&gt; to all the others.&lt;/p&gt;
+
+&lt;p&gt;The play for the &lt;strong&gt;leader host&lt;/strong&gt; would look like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;- hosts: stateful_cluster_hosts[0]
+  tasks:
+  - name: &quot;Upload leader start script&quot;
+    template:
+      src: files/leader_script.sh.j2
+      dest: start.sh
+      mode: &quot;u=rwx,g=rx,o=rx&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The play for the &lt;strong&gt;follower hosts&lt;/strong&gt; would look like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;- hosts:  stateful_cluster_hosts:!stateful_cluster_hosts[0]
+  tasks:
+  - name: &quot;Upload follower start script&quot;
+    template:
+      src: files/follower_script.sh.j2
+      dest: start.sh
+      mode: &quot;u=rwx,g=rx,o=rx&quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Where the sytax &lt;code&gt;list:!list[idx]&lt;/code&gt; means &lt;em&gt;take &lt;code&gt;list&lt;/code&gt;, but filter out
+&lt;code&gt;list[idx]&lt;/code&gt;&lt;/em&gt;.&lt;/p&gt;
+
+	</description>
+        <pubDate>Wed, 20 Mar 2019 00:00:00 +0100</pubDate>
+        <link>http://pzel.github.io/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</guid>
+      </item>
+    
+      <item>
         <title>Figuring out a gen_tcp:recv limitation</title>
         <description>In which a suprisingly pernicious framed payload leads to OTP spelunking.
 	&lt;h2&gt;The setup: sending a string over TCP&lt;/h2&gt;
@@ -837,72 +881,6 @@ programming.&lt;/p&gt;
         <pubDate>Sat, 27 Jan 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</guid>
-      </item>
-    
-      <item>
-        <title>Bits of Erlang, alpha release</title>
-        <description>An experiment in Socratic education
-	&lt;p&gt;Long ago in 2015, at LambdaCon in Bologna, I gave a hands-on workshop titled
-&lt;em&gt;An Introduction to Erlang/OTP&lt;/em&gt;. It was, in truth, a largely improvised
-code-jam around four fundamental Erlang concepts:&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;Concurrency&lt;/li&gt;
-&lt;li&gt;Process isolation&lt;/li&gt;
-&lt;li&gt;Message passing&lt;/li&gt;
-&lt;li&gt;Error propagation&lt;/li&gt;
-&lt;/ol&gt;
-
-
-&lt;p&gt;I extracted these four from &lt;a href=&quot;http://erlang.org/download/armstrong_thesis_2003.pdf&quot;&gt;Joe Armstrong's PhD thesis&lt;/a&gt;, as I felt they
-were the most salient characteristics of the language and platform.&lt;/p&gt;
-
-&lt;p&gt;The code-jam idea seemed sound, and promised some engagement from a live
-audience, so I gave it one more go at the Erlang Solutions office in Krakow,
-when we received a visit from a &lt;a href=&quot;https://www.syntaxleiden.nl/&quot;&gt;CS Student organization from Holland&lt;/a&gt;.
-They seemed to like it.&lt;/p&gt;
-
-&lt;p&gt;The follow-up plan was to publish the code-jam and tutorial for the benefit of
-the original workshop attendees, the students, and anyone interested in Erlang,
-but a laptop change or two resulted in all the code getting lost.&lt;/p&gt;
-
-&lt;p&gt;I decided against recording a screencast, sharing the belief that &lt;a href=&quot;https://simplystatistics.org/2017/06/13/the-future-of-education-is-plain-text/&quot;&gt;the future
-of education is plain text&lt;/a&gt;. The Socratic approach taken by the authors of
-the &lt;em&gt;&lt;a href=&quot;https://mitpress.mit.edu/books/little-schemer&quot;&gt;Little Schemer&lt;/a&gt;&lt;/em&gt; series of books seemed like a good compromise between
-interactivity and static textuality.&lt;/p&gt;
-
-&lt;p&gt;After two years of messing around, I'm releasing what I have. I humbly ask for
-constructive feedback and suggestions.&lt;/p&gt;
-
-&lt;h2&gt;Click here for the tutorial: &lt;br/&gt;&lt;a href=&quot;/Bits-of-erlang-chapter-1-concurrency.html&quot;&gt;Bits of Erlang, chapter 1: Concurrency&lt;/a&gt;&lt;/h2&gt;
-
-&lt;h2&gt;Open questions&lt;/h2&gt;
-
-&lt;p&gt;I'm simply releasing what I have so far, but many questions remain:&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;&lt;p&gt;Is plain Erlang shell syntax the way to go? The whole &lt;code&gt;F = fun F() -&amp;gt;&lt;/code&gt;
-dance, along with single-use variables, and the need to quit and reopen the
-shell, makes the exercise rather painful in the long run.&lt;/p&gt;&lt;/li&gt;
-&lt;li&gt;&lt;p&gt;If we go with compiled Erlang modules, we'll have to explain the boilerplate:
-&lt;code&gt;-export()&lt;/code&gt;s, &lt;code&gt;c()&lt;/code&gt;ompiling code, and having to edit the code in a separate
-environment from the shell itself. This is how I did the live-coding.&lt;/p&gt;&lt;/li&gt;
-&lt;li&gt;&lt;p&gt;We could just go with Elixir, but then we face the problem of having to
-include module definitions everywhere, which obfuscates the
-essentials. There may be an elegant way of handling this.&lt;/p&gt;&lt;/li&gt;
-&lt;li&gt;&lt;p&gt;Should the whole thing be slower-paced? There is basically &lt;strong&gt;no&lt;/strong&gt;
-explanation of Erlang syntax.. Perhaps a chapter 0, introducing syntax and
-basic data structures (lists, tuples, atoms, numbers) is in order?&lt;/p&gt;&lt;/li&gt;
-&lt;/ol&gt;
-
-
-&lt;p&gt;If you have any thoughts on these or other concerns, please reach out to me via
-email.&lt;/p&gt;
-
-	</description>
-        <pubDate>Mon, 19 Jun 2017 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2017/06/19/Bits-of-erlang-alpha-release.html</guid>
       </item>
     
   </channel>

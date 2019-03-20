@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>How to grab all hosts but the first, in Ansible :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: none; }
+  img.always-show { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+code { font-size: smaller; }
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>How to grab all hosts but the first, in Ansible</h1>
+  <p class="post-date">Today I learned (2019-03-20)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">ansible</span>
+  
+  <span class="tag">jinja2</span>
+  
+</span>
+ </p>
+  <div class="heading"> </div>
+  <p>Today I was trying to figure out how to run a particular ansible play on one
+host out of a group, and another play on <em>all the other hosts</em>.</p>
+
+<p>The answer was found in a <a href="https://grokbase.com/t/gg/ansible-project/14bkjnvrnq/how-to-define-all-hosts-but-first-in-a-group">mailing group posting from 2014</a>, but in case
+that service down, here's my note-to-self on how to do it.</p>
+
+<p>Let's say you have a group of hosts called <code>stateful_cluster_hosts</code> in your
+inventory.  You'd like to upload <code>files/leader_script.sh.j2</code> to the first host,
+and <code>files/follower_script.sh.j2</code> to all the others.</p>
+
+<p>The play for the <strong>leader host</strong> would look like this:</p>
+
+<pre><code>- hosts: stateful_cluster_hosts[0]
+  tasks:
+  - name: "Upload leader start script"
+    template:
+      src: files/leader_script.sh.j2
+      dest: start.sh
+      mode: "u=rwx,g=rx,o=rx"
+</code></pre>
+
+<p>The play for the <strong>follower hosts</strong> would look like this:</p>
+
+<pre><code>- hosts:  stateful_cluster_hosts:!stateful_cluster_hosts[0]
+  tasks:
+  - name: "Upload follower start script"
+    template:
+      src: files/follower_script.sh.j2
+      dest: start.sh
+      mode: "u=rwx,g=rx,o=rx"
+</code></pre>
+
+<p>Where the sytax <code>list:!list[idx]</code> means <em>take <code>list</code>, but filter out
+<code>list[idx]</code></em>.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html">⇦Figuring out a gen_tcp:recv limitation</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
