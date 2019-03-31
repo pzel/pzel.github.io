@@ -161,10 +161,10 @@ view model =
 
 &lt;p&gt;&lt;img src=&quot;/img/bad-elm.png&quot; alt=&quot;Screenshot of browser message saying: 'A web page is slowing down your browser.'&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;The loop is hidden in the &lt;code&gt;add&lt;/code&gt; function, which never returns an &lt;code&gt;Int&lt;/code&gt;. Its
-true return type, in this program, is precisely &lt;code&gt;⊥&lt;/code&gt;. Without explicitly
-crashing-and-stopping, we've achieved the logical (and type-systematic)
-equivalent: a freeze.&lt;/p&gt;
+&lt;p&gt;The loop is hidden in the &lt;code&gt;add&lt;/code&gt; function, which never actually returns an
+&lt;code&gt;Int&lt;/code&gt;. Its true return type, in this program, is precisely &lt;code&gt;⊥&lt;/code&gt;. Without
+explicitly crashing-and-stopping, we've achieved the logical (and
+type-systematic) equivalent: a freeze.&lt;/p&gt;
 
 &lt;h2&gt;Galloping forever and ever&lt;/h2&gt;
 

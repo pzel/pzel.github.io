@@ -221,10 +221,10 @@ view model =
 
 <p><img src="/img/bad-elm.png" alt="Screenshot of browser message saying: 'A web page is slowing down your browser.'" /></p>
 
-<p>The loop is hidden in the <code>add</code> function, which never returns an <code>Int</code>. Its
-true return type, in this program, is precisely <code>⊥</code>. Without explicitly
-crashing-and-stopping, we've achieved the logical (and type-systematic)
-equivalent: a freeze.</p>
+<p>The loop is hidden in the <code>add</code> function, which never actually returns an
+<code>Int</code>. Its true return type, in this program, is precisely <code>⊥</code>. Without
+explicitly crashing-and-stopping, we've achieved the logical (and
+type-systematic) equivalent: a freeze.</p>
 
 <h2>Galloping forever and ever</h2>
 
