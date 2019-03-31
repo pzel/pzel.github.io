@@ -1,0 +1,335 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Uncrashable languages aren't :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+/* code { font-size: small; } */
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body img { border: 1px solid #ddd; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Uncrashable languages aren't</h1>
+  <small class="post-date">2019-03-31</small>
+  <div class="heading">
+    <p>A trivial observation, with some examples</p>
+    <p><span class="tags">
+  
+  <span class="tag">elm</span>
+  
+  <span class="tag">pony</span>
+  
+  <span class="tag">crash</span>
+  
+</span>
+</p>
+  </div>
+  <h2>Making buggy situations unrepresentable</h2>
+
+<p>Programs have <strong>bugs</strong>. Both creators and end-users of software dislike
+bugs. Businesses paying for software development dislike bugs. It's no wonder
+that, as the role of software in the world expands, we've become very
+interested in minimizing occurrences of bugs.</p>
+
+<p>One way of reducing bugs is via process: making sure that critical code is
+tested to the greatest practical extent. Another way is via construction:
+making sure that buggy code is not representable. This could be achieved by
+making such code unexpressible in the syntax of a language, or having it fail
+the compiler's type check.</p>
+
+<p>There are two new programming languages that take a principled stance on the
+side of <em>non-representability</em>, by preventing code from crashing wantonly:
+<a href="https://elm-lang.org/">Elm</a> and <a href="https://www.ponylang.io/">Pony</a>.</p>
+
+<p>Elm does this by eliminating exceptions from language semantics and forcing the
+programmer to handle all branches of sum types (i.e your code has to cover all
+representable states that it might encounter).</p>
+
+<p>Pony does this by allowing anonymous exceptions (the <code>error</code> operator), but
+forcing the programmer to deal with them at some point. All functions – apart
+from those which are explicitly marked as capable of throwing errors – <em>MUST</em>
+be total and always return a value.</p>
+
+<h2>A small aside about division by zero</h2>
+
+<p>Elm used to crash when you tried to divide by zero. Now (I tried version
+<code>0.19</code>), it returns <code>0</code> for integer division and <code>Infinity</code> for floating-point
+division. The division functions are therefore total.</p>
+
+<pre><code>&gt; 5.0 / 0.0
+Infinity : Float
+&gt; 5 // 0
+0 : Int
+&gt; remainderBy 5 0
+0 : Int
+&gt; modBy 5 0
+0 : Int
+</code></pre>
+
+<p>Pony also returns zero when zero is the divisor.</p>
+
+<pre><code>actor Main                                        //  This code prints:
+  new create(env: Env) =&gt;                         //  0
+   env.out.print((U32(1) / U32(0)).string())
+</code></pre>
+
+<p>However, Pony also provides <a href="https://tutorial.ponylang.io/expressions/arithmetic.html">partial
+arithmetic</a> operators
+(<code>/?</code> for division, <code>+?</code> for addition, below), for when you explicitly need
+integer over/underflows and division-by-zero to be illegal:</p>
+
+<pre><code>actor Main                                         //  This code prints:
+  new create(env: Env) =&gt;                          //  div by zero
+    try U32(1) /? U32(0)                           //  overflow
+    else env.out.print("div by zero")              //  0
+    end                                            //  0
+    try U8(255) +? U8(1)
+    else env.out.print("overflow")
+    end
+   env.out.print((U32(1) / U32(0)).string())
+   env.out.print((U8(255) + U8(1)).string())
+</code></pre>
+
+<p>While returning '0' for divison-by-zero is a controversial topic (yet silent
+integer overflows somehow don't generate the same debate), I think it's
+reasonable to view this compromise as the necessary cost of eliminating crashes
+in our code. More interesting is this: we have just made a
+tradeoff between eliminating <strong>crashes</strong> and <strong>wrong results</strong>. Having a total
+division function eliminates crashes at the cost of allowing wrong results to
+propagate. Let's dig into this a bit more.</p>
+
+<h2>Bugs and the bottom type</h2>
+
+<p>Taxonomy is supposed to be the lowest form of science, but let's indulge and
+distinguish two main types of program misbehavior:</p>
+
+<p>   1) A program (or function) produces output which does not match the
+   programmer's intent, design, or specification;</p>
+
+<p>   2) A program (or function) fails to produce output (e.g. freezes or crashes)</p>
+
+<p>I hope you'll agree that eliminating 'bugs' caused by the first type of error
+is not an easy feat, and probably not within the scope of a language runtime or
+compiler. Carefully designing your data structures to make illegal states
+unrepresentable may go a long way towards eliminating failures of this kind, as
+will a good testing regimen. Let's not delve deeper into this category and
+focus on the second one: <strong>functions that crash and never return</strong>.</p>
+
+<p>The wikipedia article on the <a href="https://en.wikipedia.org/wiki/Bottom_type">Bottom
+Type</a> makes for an intersting
+read. It's nice to conceive of <code>⊥</code> as a hole in the program, where execution
+stops and meaning collapses. Since the bottom type is a subtype of every type,
+theoretically any function can return the 'bottom value' — although returning
+the 'bottom value' acutally means <em>never returning at all</em>.</p>
+
+<p>My claim is that while some languages, like Haskell or Rust, might explicitly
+embrace the existence of <code>⊥</code>, languages that prevent programmers from
+'invoking' the bottom type will always contain inconsistencies (I'm leaving
+dependently-typed languages out of this). Below are two examples.</p>
+
+<h2>Broken promises and infinite loops</h2>
+
+<p>Elm's promise is that an application written in Elm will never crash, unless
+there is a bug in the Elm runtime. <a href="https://medium.com/@eeue56/top-6-ways-to-make-your-elm-app-crash-at-runtime-562b2fa92d70">There are articles out
+there</a>
+that enumerate the various broken edge-cases (regexp, arrays, json decoding),
+but these cases can arguably be construed as bugs in the runtime or mistakes in
+library API design. That is, these bugs do not mean that Elm's promise is for
+naught.</p>
+
+<p>However, if you think about it, an infinite loop is a manifestation of the
+bottom type just as much as an outright crash, and such a loop is possible in
+all Turing-complete languages.</p>
+
+<p>Here's a legal Elm app that freezes:</p>
+
+<pre><code>import Browser
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
+
+main =
+  Browser.sandbox { init = 0, update = update, view = view }
+
+type Msg = Increment | Decrement
+
+add : Int -&gt; Int
+add n =
+  add (n+1)
+
+update msg model =
+  case msg of
+    Increment -&gt;
+      add model
+
+    Decrement -&gt;
+      model - 1
+
+view model =
+  div []
+    [ button [ onClick Decrement ] [ text "-" ]
+    , div [] [ text (String.fromInt model) ]
+    , button [ onClick Increment ] [ text "+" ]
+    ]
+</code></pre>
+
+<p>What will happen when you click the <code>+</code> button in the browser? This is what:</p>
+
+<p><img src="/img/bad-elm.png" alt="Screenshot of browser message saying: 'A web page is slowing down your browser.'" /></p>
+
+<p>The loop is hidden in the <code>add</code> function, which never returns an <code>Int</code>. Its
+true return type, in this program, is precisely <code>⊥</code>. Without explicitly
+crashing-and-stopping, we've achieved the logical (and type-systematic)
+equivalent: a freeze.</p>
+
+<h2>Galloping forever and ever</h2>
+
+<p>The Pony language is susceptible to a similar trick, but we'll have to be a bit
+more crafty. First of all, Pony does indeed allow the programmer to 'invoke'
+the Bottom Type, by simply using the keyword <code>error</code> anywhere in a function
+body. Using this keyword (or calling a partial function) means that we, the
+programmer, now have a choice to make:</p>
+
+<p>  1) Use <code>try/else</code> to handle the possibility of error, and return a sensible
+  default value</p>
+
+<p>  2) Mark this function as partial <code>?</code>, and force callers to deal with the
+  possibility of the Bottom Type rearing its head.</p>
+
+<p>However, we can craft a function that spins endlessly, never exiting, and thus
+'returning' the Bottom Type, without the compiler complaining, and without
+having to annotate it as partial.</p>
+
+<p>Interestingly enough, naïve approaches are optimized away by the compiler,
+producing surprising result values instead of spinning forever:</p>
+
+<pre><code>actor Main
+  new create(env: Env) =&gt;
+    let x = spin(false)
+    env.out.print(x.string())
+
+  fun spin(n: Bool): Bool =&gt;
+    spin(not n)
+</code></pre>
+
+<p>Before you run this program, think about what, if anything, it should
+output. Then, run it and see. Seems like magic to me, but I'm guessing this is
+LLVM detecting the oscillation and producing a 'sensible' value.</p>
+
+<p>We can outsmart the optimizer by farming out the loop to another object:</p>
+
+<pre><code>actor Main
+  new create(env: Env) =&gt;
+    let t: TarpitTrap = TarpitTrap
+    let result = t.spin(true)
+    env.out.print(result.string())
+
+class TarpitTrap
+  fun spin(n: Bool): Bool =&gt;
+    if n then spin(not n)
+    else spin(n)
+    end
+</code></pre>
+
+<p>Now, this program properly freezes forever, as intended. Of course this is just
+a contrived demonstration, but one can imagine an analogous situation happening
+at run-time, for example when parsing tricky (or malicious) input data.</p>
+
+<h2>The snake in the garden</h2>
+
+<p>While I enjoy working both in Elm and Pony, I'm not a particular fan of these
+languages' hard-line stance on making sure programs never crash. As long as
+infinite loops are expressible in the language, the Bottom Type cannot be
+excised.</p>
+
+<p>Even without concerns somewhat external to our programming language runtime,
+such as memory constraints, FFIs, syscalls, or the proverbial admin pulling the
+plug on our machine (did this really used to happen?), the humble infinite loop
+ensures that non-termination can never be purged from our
+(non-dependently-typed) program.</p>
+
+<p>Instead of focusing on preventing crashes in the small, I think we, as
+programmers, should embrace failure and look at how to deal with error from a
+higher-level perspective, looking at processes, machines, and entire
+systems. Erlang and OTP got this right so many years ago. Ensuring the proper
+operation of a system <em>despite</em> failure is a much more practical goal than
+vainly trying to expel the infinitely-looping snake from our software garden.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html">⇦How to grab all hosts but the first, in Ansible</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

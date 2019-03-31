@@ -7,6 +7,245 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Uncrashable languages aren't</title>
+        <description>A trivial observation, with some examples
+	&lt;h2&gt;Making buggy situations unrepresentable&lt;/h2&gt;
+
+&lt;p&gt;Programs have &lt;strong&gt;bugs&lt;/strong&gt;. Both creators and end-users of software dislike
+bugs. Businesses paying for software development dislike bugs. It's no wonder
+that, as the role of software in the world expands, we've become very
+interested in minimizing occurrences of bugs.&lt;/p&gt;
+
+&lt;p&gt;One way of reducing bugs is via process: making sure that critical code is
+tested to the greatest practical extent. Another way is via construction:
+making sure that buggy code is not representable. This could be achieved by
+making such code unexpressible in the syntax of a language, or having it fail
+the compiler's type check.&lt;/p&gt;
+
+&lt;p&gt;There are two new programming languages that take a principled stance on the
+side of &lt;em&gt;non-representability&lt;/em&gt;, by preventing code from crashing wantonly:
+&lt;a href=&quot;https://elm-lang.org/&quot;&gt;Elm&lt;/a&gt; and &lt;a href=&quot;https://www.ponylang.io/&quot;&gt;Pony&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Elm does this by eliminating exceptions from language semantics and forcing the
+programmer to handle all branches of sum types (i.e your code has to cover all
+representable states that it might encounter).&lt;/p&gt;
+
+&lt;p&gt;Pony does this by allowing anonymous exceptions (the &lt;code&gt;error&lt;/code&gt; operator), but
+forcing the programmer to deal with them at some point. All functions – apart
+from those which are explicitly marked as capable of throwing errors – &lt;em&gt;MUST&lt;/em&gt;
+be total and always return a value.&lt;/p&gt;
+
+&lt;h2&gt;A small aside about division by zero&lt;/h2&gt;
+
+&lt;p&gt;Elm used to crash when you tried to divide by zero. Now (I tried version
+&lt;code&gt;0.19&lt;/code&gt;), it returns &lt;code&gt;0&lt;/code&gt; for integer division and &lt;code&gt;Infinity&lt;/code&gt; for floating-point
+division. The division functions are therefore total.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;&amp;gt; 5.0 / 0.0
+Infinity : Float
+&amp;gt; 5 // 0
+0 : Int
+&amp;gt; remainderBy 5 0
+0 : Int
+&amp;gt; modBy 5 0
+0 : Int
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Pony also returns zero when zero is the divisor.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;actor Main                                        //  This code prints:
+  new create(env: Env) =&amp;gt;                         //  0
+   env.out.print((U32(1) / U32(0)).string())
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;However, Pony also provides &lt;a href=&quot;https://tutorial.ponylang.io/expressions/arithmetic.html&quot;&gt;partial
+arithmetic&lt;/a&gt; operators
+(&lt;code&gt;/?&lt;/code&gt; for division, &lt;code&gt;+?&lt;/code&gt; for addition, below), for when you explicitly need
+integer over/underflows and division-by-zero to be illegal:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;actor Main                                         //  This code prints:
+  new create(env: Env) =&amp;gt;                          //  div by zero
+    try U32(1) /? U32(0)                           //  overflow
+    else env.out.print(&quot;div by zero&quot;)              //  0
+    end                                            //  0
+    try U8(255) +? U8(1)
+    else env.out.print(&quot;overflow&quot;)
+    end
+   env.out.print((U32(1) / U32(0)).string())
+   env.out.print((U8(255) + U8(1)).string())
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;While returning '0' for divison-by-zero is a controversial topic (yet silent
+integer overflows somehow don't generate the same debate), I think it's
+reasonable to view this compromise as the necessary cost of eliminating crashes
+in our code. More interesting is this: we have just made a
+tradeoff between eliminating &lt;strong&gt;crashes&lt;/strong&gt; and &lt;strong&gt;wrong results&lt;/strong&gt;. Having a total
+division function eliminates crashes at the cost of allowing wrong results to
+propagate. Let's dig into this a bit more.&lt;/p&gt;
+
+&lt;h2&gt;Bugs and the bottom type&lt;/h2&gt;
+
+&lt;p&gt;Taxonomy is supposed to be the lowest form of science, but let's indulge and
+distinguish two main types of program misbehavior:&lt;/p&gt;
+
+&lt;p&gt;   1) A program (or function) produces output which does not match the
+   programmer's intent, design, or specification;&lt;/p&gt;
+
+&lt;p&gt;   2) A program (or function) fails to produce output (e.g. freezes or crashes)&lt;/p&gt;
+
+&lt;p&gt;I hope you'll agree that eliminating 'bugs' caused by the first type of error
+is not an easy feat, and probably not within the scope of a language runtime or
+compiler. Carefully designing your data structures to make illegal states
+unrepresentable may go a long way towards eliminating failures of this kind, as
+will a good testing regimen. Let's not delve deeper into this category and
+focus on the second one: &lt;strong&gt;functions that crash and never return&lt;/strong&gt;.&lt;/p&gt;
+
+&lt;p&gt;The wikipedia article on the &lt;a href=&quot;https://en.wikipedia.org/wiki/Bottom_type&quot;&gt;Bottom
+Type&lt;/a&gt; makes for an intersting
+read. It's nice to conceive of &lt;code&gt;⊥&lt;/code&gt; as a hole in the program, where execution
+stops and meaning collapses. Since the bottom type is a subtype of every type,
+theoretically any function can return the 'bottom value' — although returning
+the 'bottom value' acutally means &lt;em&gt;never returning at all&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;My claim is that while some languages, like Haskell or Rust, might explicitly
+embrace the existence of &lt;code&gt;⊥&lt;/code&gt;, languages that prevent programmers from
+'invoking' the bottom type will always contain inconsistencies (I'm leaving
+dependently-typed languages out of this). Below are two examples.&lt;/p&gt;
+
+&lt;h2&gt;Broken promises and infinite loops&lt;/h2&gt;
+
+&lt;p&gt;Elm's promise is that an application written in Elm will never crash, unless
+there is a bug in the Elm runtime. &lt;a href=&quot;https://medium.com/@eeue56/top-6-ways-to-make-your-elm-app-crash-at-runtime-562b2fa92d70&quot;&gt;There are articles out
+there&lt;/a&gt;
+that enumerate the various broken edge-cases (regexp, arrays, json decoding),
+but these cases can arguably be construed as bugs in the runtime or mistakes in
+library API design. That is, these bugs do not mean that Elm's promise is for
+naught.&lt;/p&gt;
+
+&lt;p&gt;However, if you think about it, an infinite loop is a manifestation of the
+bottom type just as much as an outright crash, and such a loop is possible in
+all Turing-complete languages.&lt;/p&gt;
+
+&lt;p&gt;Here's a legal Elm app that freezes:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;import Browser
+import Html exposing (Html, button, div, text)
+import Html.Events exposing (onClick)
+
+main =
+  Browser.sandbox { init = 0, update = update, view = view }
+
+type Msg = Increment | Decrement
+
+add : Int -&amp;gt; Int
+add n =
+  add (n+1)
+
+update msg model =
+  case msg of
+    Increment -&amp;gt;
+      add model
+
+    Decrement -&amp;gt;
+      model - 1
+
+view model =
+  div []
+    [ button [ onClick Decrement ] [ text &quot;-&quot; ]
+    , div [] [ text (String.fromInt model) ]
+    , button [ onClick Increment ] [ text &quot;+&quot; ]
+    ]
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;What will happen when you click the &lt;code&gt;+&lt;/code&gt; button in the browser? This is what:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/bad-elm.png&quot; alt=&quot;Screenshot of browser message saying: 'A web page is slowing down your browser.'&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The loop is hidden in the &lt;code&gt;add&lt;/code&gt; function, which never returns an &lt;code&gt;Int&lt;/code&gt;. Its
+true return type, in this program, is precisely &lt;code&gt;⊥&lt;/code&gt;. Without explicitly
+crashing-and-stopping, we've achieved the logical (and type-systematic)
+equivalent: a freeze.&lt;/p&gt;
+
+&lt;h2&gt;Galloping forever and ever&lt;/h2&gt;
+
+&lt;p&gt;The Pony language is susceptible to a similar trick, but we'll have to be a bit
+more crafty. First of all, Pony does indeed allow the programmer to 'invoke'
+the Bottom Type, by simply using the keyword &lt;code&gt;error&lt;/code&gt; anywhere in a function
+body. Using this keyword (or calling a partial function) means that we, the
+programmer, now have a choice to make:&lt;/p&gt;
+
+&lt;p&gt;  1) Use &lt;code&gt;try/else&lt;/code&gt; to handle the possibility of error, and return a sensible
+  default value&lt;/p&gt;
+
+&lt;p&gt;  2) Mark this function as partial &lt;code&gt;?&lt;/code&gt;, and force callers to deal with the
+  possibility of the Bottom Type rearing its head.&lt;/p&gt;
+
+&lt;p&gt;However, we can craft a function that spins endlessly, never exiting, and thus
+'returning' the Bottom Type, without the compiler complaining, and without
+having to annotate it as partial.&lt;/p&gt;
+
+&lt;p&gt;Interestingly enough, naïve approaches are optimized away by the compiler,
+producing surprising result values instead of spinning forever:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;actor Main
+  new create(env: Env) =&amp;gt;
+    let x = spin(false)
+    env.out.print(x.string())
+
+  fun spin(n: Bool): Bool =&amp;gt;
+    spin(not n)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Before you run this program, think about what, if anything, it should
+output. Then, run it and see. Seems like magic to me, but I'm guessing this is
+LLVM detecting the oscillation and producing a 'sensible' value.&lt;/p&gt;
+
+&lt;p&gt;We can outsmart the optimizer by farming out the loop to another object:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;actor Main
+  new create(env: Env) =&amp;gt;
+    let t: TarpitTrap = TarpitTrap
+    let result = t.spin(true)
+    env.out.print(result.string())
+
+class TarpitTrap
+  fun spin(n: Bool): Bool =&amp;gt;
+    if n then spin(not n)
+    else spin(n)
+    end
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, this program properly freezes forever, as intended. Of course this is just
+a contrived demonstration, but one can imagine an analogous situation happening
+at run-time, for example when parsing tricky (or malicious) input data.&lt;/p&gt;
+
+&lt;h2&gt;The snake in the garden&lt;/h2&gt;
+
+&lt;p&gt;While I enjoy working both in Elm and Pony, I'm not a particular fan of these
+languages' hard-line stance on making sure programs never crash. As long as
+infinite loops are expressible in the language, the Bottom Type cannot be
+excised.&lt;/p&gt;
+
+&lt;p&gt;Even without concerns somewhat external to our programming language runtime,
+such as memory constraints, FFIs, syscalls, or the proverbial admin pulling the
+plug on our machine (did this really used to happen?), the humble infinite loop
+ensures that non-termination can never be purged from our
+(non-dependently-typed) program.&lt;/p&gt;
+
+&lt;p&gt;Instead of focusing on preventing crashes in the small, I think we, as
+programmers, should embrace failure and look at how to deal with error from a
+higher-level perspective, looking at processes, machines, and entire
+systems. Erlang and OTP got this right so many years ago. Ensuring the proper
+operation of a system &lt;em&gt;despite&lt;/em&gt; failure is a much more practical goal than
+vainly trying to expel the infinitely-looping snake from our software garden.&lt;/p&gt;
+
+	</description>
+        <pubDate>Sun, 31 Mar 2019 00:00:00 +0100</pubDate>
+        <link>http://pzel.github.io/2019/03/31/Uncrashable-languages-arent.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2019/03/31/Uncrashable-languages-arent.html</guid>
+      </item>
+    
+      <item>
         <title>How to grab all hosts but the first, in Ansible</title>
         <description>
 	&lt;p&gt;Today I was trying to figure out how to run a particular ansible play on one
@@ -731,156 +970,6 @@ for educational purposes.&lt;/p&gt;
         <pubDate>Tue, 30 Jan 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</guid>
-      </item>
-    
-      <item>
-        <title>Pair Programming and Happiness</title>
-        <description>Perhaps there is a way to get it right
-	&lt;h2&gt;What this post is about&lt;/h2&gt;
-
-&lt;p&gt;Every time an article about pair programming surfaces in one of the Internet's
-watering holes, I am surprised by the amount of negativity surrounding the
-practice.&lt;/p&gt;
-
-&lt;p&gt;In this post, I suggest two modifications to &quot;standard&quot; pair programming, which
-should make it more enjoyable, even for introverts and skilled experts.&lt;/p&gt;
-
-&lt;h2&gt;People complain&lt;/h2&gt;
-
-&lt;p&gt;Reading the top top-rated comments in &lt;a href=&quot;https://lobste.rs/s/wyd3di/do_you_pair_program&quot;&gt;one of many threads on
-pairing&lt;/a&gt;, one sees critical comments like these:&lt;/p&gt;
-
-&lt;blockquote&gt;&lt;p&gt;I can’t stand pair programming, and I simply would not work somewhere that required it.&lt;/p&gt;
-
-&lt;p&gt;Pair programming (..)? Super not a fan.&lt;/p&gt;
-
-&lt;p&gt;I’m personally strongly against it.&lt;/p&gt;&lt;/blockquote&gt;
-
-&lt;p&gt;While I haven't done a through qualitative study on the sentiments expressed,
-one of the main arguments against pairing seems to be the fact that programmers
-don't enjoy being forced to socialize against their will.
-This forced socialization entails things like:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;sharing the keyboard&lt;/li&gt;
-&lt;li&gt;sharing editor settings&lt;/li&gt;
-&lt;li&gt;close physical proximity to the other member of the pair&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;The other counterargument centers around the difficulties in matching skill and
-experience levels between the two members of a pair. Here, the following come up:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;two experienced programmers do more work separately then when pairing&lt;/li&gt;
-&lt;li&gt;two juniors will not learn anything from each other&lt;/li&gt;
-&lt;li&gt;it makes sense to pair juniors with seniors only during the onboarding period&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;This skills-based barrier to pleasurable and productive pairing is indeed more
-serious, but I have seen it overcome with a small shift in attitude and
-approach.&lt;/p&gt;
-
-&lt;p&gt;Below, I'd like to present the paring setup and techniques that I've used (and
-seen used) in the last few years. I believe that they alleviate some of the
-misgivings about pair programming mentioned above.&lt;/p&gt;
-
-&lt;h2&gt;Introverts, separate!&lt;/h2&gt;
-
-&lt;p&gt;I've done most my professional work remotely. A lot of the code I've
-(co-)developed was written in a pair-programming+TDD setting, &lt;strong&gt;remotely&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;How does one effectively pair-program when not at the same desk? I'm not the
-first person to recommend the classic &lt;code&gt;ssh + tmux&lt;/code&gt; solution. I believe
-this solution is &lt;strong&gt;strictly better&lt;/strong&gt; than pair programming at one desk.&lt;/p&gt;
-
-&lt;p&gt;It works like this:&lt;/p&gt;
-
-&lt;ol&gt;
-&lt;li&gt;The team sets up a shared development box, accessible by ssh/mosh&lt;/li&gt;
-&lt;li&gt;A pair of team members logs in, &lt;code&gt;tmux a&lt;/code&gt;ttaches to a shared terminal&lt;/li&gt;
-&lt;li&gt;They run &lt;del&gt;vim&lt;/del&gt; emacs inside&lt;/li&gt;
-&lt;li&gt;They use a separate app for audio. (Mumble, Skype, Slack calls, etc.)&lt;/li&gt;
-&lt;/ol&gt;
-
-
-&lt;p&gt;This solution is so good, that I've even used it while working in the same room
-as the pairing partner (sans voice app, of course). It provides both parties
-with a &lt;a href=&quot;https://en.wikipedia.org/wiki/Joint_attention&quot;&gt;shared locus of attention&lt;/a&gt;, while not exposing them to physical
-discomfort.&lt;/p&gt;
-
-&lt;p&gt;While this solution clearly eliminates physical issues around pairing, the
-problem of a shared programming environment remains. As pair programming
-requires practitioners to be fluent with the tools they use day-to-day,
-fundamentally there will always be a need for compromise on this front.&lt;/p&gt;
-
-&lt;p&gt;Practically, however, most backend programmers will be familiar with either vim
-or emacs—a judicious use of toggles for switching between setting groups
-should sort out personal quirks. (For example: at work we bind &lt;code&gt;&amp;lt;F4&amp;gt;&lt;/code&gt; to switch
-emacs from vanilla behavior to &lt;a href=&quot;https://www.emacswiki.org/emacs/Evil&quot;&gt;evil-mode&lt;/a&gt;. It works well enough.)&lt;/p&gt;
-
-&lt;h2&gt;Jamming is conversation&lt;/h2&gt;
-
-&lt;p&gt;The other issue is related to skill levels. Simplifying skill levels to a
-binary of &lt;em&gt;junior&lt;/em&gt; and &lt;em&gt;senior&lt;/em&gt;, we get 3 possible pairings: both juniors, both
-seniors, and junior+senior.&lt;/p&gt;
-
-&lt;p&gt;The junior+senior combination seems to be the most highly regarded use case for
-pair programming, even among the detractors. It makes sense that putting the
-less experienced in close quarters with a seasoned master should benefit the
-junior. Even in these cases, I can imagine that some seniors may feel that
-their time isn't being put to good use, while some juniors might get
-overwhelmed watching their mentor work with great efficiency. This leads to
-fatigue and 'just watching' as the other person works—definitely a waste of
-both the devs' time and the employer's money.&lt;/p&gt;
-
-&lt;p&gt;The key to getting the most our of pair programming is to &lt;strong&gt;A&lt;/strong&gt;lways &lt;strong&gt;B&lt;/strong&gt;e
-&lt;strong&gt;C&lt;/strong&gt;oding. The common pairing methodology of driver and navigator switching
-roles every 30 minutes is tedious and wasteful. I believe that turning the
-coding session into a jam session is the key to making pairing work.&lt;/p&gt;
-
-&lt;p&gt;How to keep both parties engaged and coding? If you're applying TDD, it's easy:
-just do ping-pong pairing. Developer A writes a test. Developer B writes
-enough of an implementation to make the test pass, then continues with another
-test. Developer A picks up, and modifies the implementation to meet the demands.&lt;/p&gt;
-
-&lt;p&gt;This kind of call-and-response style of development keeps both parties focused
-on the code, talking and thinking about the task at hand. While TDD works most
-of the time, there exist some issues which cannot be simply reduced to a test
-case. Here, still, the challenge-and-reply approach does wonders for code
-quality and developer engagement. (For example: one developer might challenge
-the other by saying: &quot;There is a more efficient algorithm&quot;, or &quot;I can break
-this mechanism like so. How will you fix it?&quot;, etc.)&lt;/p&gt;
-
-&lt;p&gt;By approaching pair programming as a conversation, we can get more mileage out
-of any combination of skill levels. For two juniors, the back and forth may
-touch on unit test design or knowledge of the system. Two seniors pairing will
-get opportunities to critically examine and revise system architecture or
-coding standards, but the possibilities for jamming are endless. They may even
-involve betting money (sic!).&lt;/p&gt;
-
-&lt;h2&gt;Wrapping up&lt;/h2&gt;
-
-&lt;p&gt;Above, I described two tweaks to pair programming practice that, in my
-experience, make it much more enjoyable. To summarize:&lt;/p&gt;
-
-&lt;ul&gt;
-&lt;li&gt;A remote shared workstation may alleviate the physical discomfort of pairing&lt;/li&gt;
-&lt;li&gt;Call-and-response jamming will keep both devs engaged, learning, and focused
-on the code, regardless of skill levels&lt;/li&gt;
-&lt;/ul&gt;
-
-
-&lt;p&gt;This concludes my humble contribution to the ongoing conversation around pair
-programming.&lt;/p&gt;
-
-&lt;p&gt;(Edited on 2018-01-30 for spelling)&lt;/p&gt;
-
-	</description>
-        <pubDate>Sat, 27 Jan 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2018/01/27/Pair-programming-and-happiness.html</guid>
       </item>
     
   </channel>
