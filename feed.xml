@@ -7,6 +7,102 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Uses for traits vs type aliases in Ponylang</title>
+        <description>
+	&lt;p&gt;I realized today that while both &lt;a href=&quot;https://tutorial.ponylang.io/types/traits-and-interfaces.html&quot;&gt;traits&lt;/a&gt; and &lt;a href=&quot;https://tutorial.ponylang.io/types/type-aliases.html&quot;&gt;type aliases&lt;/a&gt; can be used
+to represent a union of types in Pony, each of these solutions has some
+characteristics which make sense in different circumstances.&lt;/p&gt;
+
+&lt;h2&gt;Traits: Keeping an interface open&lt;/h2&gt;
+
+&lt;p&gt;Let's say you have the trait &lt;code&gt;UUIDable&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;trait UUIDable
+  fun uuid(): UUID
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;and you have a method that accepts object implementing said trait.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;  fun register_uuid(thing: UUIDable): RegistrationResult =&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Delcaring the function parameter type like this means that any &lt;code&gt;thing&lt;/code&gt; that has
+been declared to implement the trait &lt;code&gt;UUIDable&lt;/code&gt; will be a valid
+argument. Inside the method body, we can only call &lt;code&gt;.uuid()&lt;/code&gt; on the &lt;code&gt;thing&lt;/code&gt;, because that's the only method specified by the trait.&lt;/p&gt;
+
+&lt;p&gt;We can take an instance of the class &lt;code&gt;class User is UUIDable&lt;/code&gt;, and pass it to
+&lt;code&gt;register_uuid.&lt;/code&gt; When we continue development and add &lt;code&gt;class Invoice is
+UUIDable&lt;/code&gt;, no change in any code is required for &lt;code&gt;register_uuid&lt;/code&gt; to also accept
+this new class. In fact, we are free to add as many &lt;code&gt;UUIDable&lt;/code&gt; classes to our
+codebase, and they'll all work without any changes to &lt;code&gt;register_uuid&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;This approach is great when we just want to define a typed contract for our
+methods.  However, it does not work when we want to explicitly break
+encapsulation and – for example – match on the type of the &lt;code&gt;thing&lt;/code&gt;.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;fun register_uuid(thing: UUIDable): RegistrationResult =&amp;gt;
+  match thing
+  | let u: User =&amp;gt; _register_user(u)
+  | let i: Invoice =&amp;gt; _register_invoice(i)
+  end
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The compiler will complain about this method definition, because it can't know
+that &lt;code&gt;User&lt;/code&gt; and &lt;code&gt;Invoice&lt;/code&gt; are the only exising types that satisfy
+&lt;code&gt;UUIDable&lt;/code&gt;. For the compiler, this now means that any &lt;code&gt;UUIDable&lt;/code&gt; thing that is
+&lt;strong&gt;not&lt;/strong&gt; a &lt;code&gt;User&lt;/code&gt; or an &lt;code&gt;Invoice&lt;/code&gt; will fall through the &lt;code&gt;match&lt;/code&gt;, and so the
+resulting output type must also include &lt;code&gt;None&lt;/code&gt;, which represents the 'missed'
+case in our &lt;code&gt;match&lt;/code&gt; statment.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;We&lt;/strong&gt; know that the above match is indeed exhaustive. &lt;code&gt;User&lt;/code&gt;s and &lt;code&gt;Invoice&lt;/code&gt;s will
+be the only types that satisfy &lt;code&gt;UUIDable&lt;/code&gt;. How can we let the &lt;strong&gt;compiler&lt;/strong&gt; know?&lt;/p&gt;
+
+&lt;h2&gt;Type aliases: explicit and complete enumerations&lt;/h2&gt;
+
+&lt;p&gt;If we want to break encapsulation, and are interested in an exhaustive and
+explicit union type, then a type alias gives the compiler enough info to
+determine that the match statement is in fact exhaustive:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;type UUIDable is (User | Invoice)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code&gt;fun register_uuid(thing: UUIDable): RegistrationResult =&amp;gt;
+  match thing
+  | let u: User =&amp;gt; _register_user(u)
+  | let i: Invoice =&amp;gt; _register_invoice(i)
+  end
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Different situations will call for different approaches. The type alias
+approach means that anytime you add a new &lt;code&gt;UUIDable&lt;/code&gt;, you'll have to redefine
+this alias, &lt;em&gt;and&lt;/em&gt; have to go through all your &lt;code&gt;match&lt;/code&gt; statements and add a new
+case. The silver lining is that the compiler will tell you which places you
+need to modify.&lt;/p&gt;
+
+&lt;p&gt;Also, note that you can still call &lt;code&gt;thing.uuid()&lt;/code&gt; and have it type-check, as
+the compiler can determine that all classes belonging to &lt;code&gt;(User | Invoice)&lt;/code&gt;
+actually provide this method.&lt;/p&gt;
+
+&lt;h2&gt;Encapsulation vs. exhaustiveness&lt;/h2&gt;
+
+&lt;p&gt;Using traits (or interfaces for even more 'looseness') means that, in the
+large, your code will have to conform to the OOO practices of loose coupling,
+information hiding, and encapsulation.&lt;/p&gt;
+
+&lt;p&gt;Using union types defined as type aliases means that encapsulation is no longer
+possible, but the compiler will guide you in making sure that matches are
+exhaustive when you take apart function arguments. This results in the code
+looking more 'functional' in the large.&lt;/p&gt;
+
+&lt;p&gt;You can play around with this code in the &lt;a href=&quot;https://playground.ponylang.io/?gist=429dcefd4ebc952c241bbbcaef3104c9&quot;&gt;Pony playground&lt;/a&gt;.&lt;/p&gt;
+
+	</description>
+        <pubDate>Sat, 06 Apr 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</guid>
+      </item>
+    
+      <item>
         <title>Uncrashable languages aren't</title>
         <description>A trivial observation, with some examples
 	&lt;h2&gt;Making buggy situations unrepresentable&lt;/h2&gt;
@@ -943,33 +1039,6 @@ your Erlang/OTP version. Map-based specs were added in &lt;a href=&quot;http://w
         <pubDate>Fri, 02 Feb 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</guid>
-      </item>
-    
-      <item>
-        <title>cowboy_req:reply works by side-effect!</title>
-        <description>
-	&lt;p&gt;Let's say you have the following &lt;a href=&quot;https://github.com/ninenines/cowboy&quot;&gt;cowboy&lt;/a&gt; handler:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;reply_with_things(Things, Req, State) -&amp;gt;
-    {ok, Req1} = cowboy_req:reply(200,
-        [{&amp;lt;&amp;lt;&quot;content-type&quot;&amp;gt;&amp;gt;, &amp;lt;&amp;lt;&quot;application/json&quot;&amp;gt;&amp;gt;}],
-        jiffy:encode({[{things, Things}]}), Req),
-    _ = some_action(Things),
-    {ok, Req1, State}.
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;and &lt;code&gt;some_action/1&lt;/code&gt; crashes. What gets returned to the client?&lt;/p&gt;
-
-&lt;p&gt;In turns out that the client will still get the encoded json response, as
-&lt;code&gt;cowboy_req:reply&lt;/code&gt; works by side-effect.&lt;/p&gt;
-
-&lt;p&gt;Not that you'd want to have code like the above in your system. It's here just
-for educational purposes.&lt;/p&gt;
-
-	</description>
-        <pubDate>Tue, 30 Jan 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2018/01/30/Cowboy-replies.html</guid>
       </item>
     
   </channel>

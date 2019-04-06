@@ -1,0 +1,188 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Uses for traits vs type aliases in Ponylang :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+/* code { font-size: small; } */
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body img { border: 1px solid #ddd; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Uses for traits vs type aliases in Ponylang</h1>
+  <p class="post-date">Today I learned (2019-04-06)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">pony</span>
+  
+  <span class="tag">ponylang</span>
+  
+</span>
+ </p>
+  <div class="heading"> </div>
+  <p>I realized today that while both <a href="https://tutorial.ponylang.io/types/traits-and-interfaces.html">traits</a> and <a href="https://tutorial.ponylang.io/types/type-aliases.html">type aliases</a> can be used
+to represent a union of types in Pony, each of these solutions has some
+characteristics which make sense in different circumstances.</p>
+
+<h2>Traits: Keeping an interface open</h2>
+
+<p>Let's say you have the trait <code>UUIDable</code>.</p>
+
+<pre><code>trait UUIDable
+  fun uuid(): UUID
+</code></pre>
+
+<p>and you have a method that accepts object implementing said trait.</p>
+
+<pre><code>  fun register_uuid(thing: UUIDable): RegistrationResult =&gt;
+</code></pre>
+
+<p>Delcaring the function parameter type like this means that any <code>thing</code> that has
+been declared to implement the trait <code>UUIDable</code> will be a valid
+argument. Inside the method body, we can only call <code>.uuid()</code> on the <code>thing</code>, because that's the only method specified by the trait.</p>
+
+<p>We can take an instance of the class <code>class User is UUIDable</code>, and pass it to
+<code>register_uuid.</code> When we continue development and add <code>class Invoice is
+UUIDable</code>, no change in any code is required for <code>register_uuid</code> to also accept
+this new class. In fact, we are free to add as many <code>UUIDable</code> classes to our
+codebase, and they'll all work without any changes to <code>register_uuid</code>.</p>
+
+<p>This approach is great when we just want to define a typed contract for our
+methods.  However, it does not work when we want to explicitly break
+encapsulation and – for example – match on the type of the <code>thing</code>.</p>
+
+<pre><code>fun register_uuid(thing: UUIDable): RegistrationResult =&gt;
+  match thing
+  | let u: User =&gt; _register_user(u)
+  | let i: Invoice =&gt; _register_invoice(i)
+  end
+</code></pre>
+
+<p>The compiler will complain about this method definition, because it can't know
+that <code>User</code> and <code>Invoice</code> are the only exising types that satisfy
+<code>UUIDable</code>. For the compiler, this now means that any <code>UUIDable</code> thing that is
+<strong>not</strong> a <code>User</code> or an <code>Invoice</code> will fall through the <code>match</code>, and so the
+resulting output type must also include <code>None</code>, which represents the 'missed'
+case in our <code>match</code> statment.</p>
+
+<p><strong>We</strong> know that the above match is indeed exhaustive. <code>User</code>s and <code>Invoice</code>s will
+be the only types that satisfy <code>UUIDable</code>. How can we let the <strong>compiler</strong> know?</p>
+
+<h2>Type aliases: explicit and complete enumerations</h2>
+
+<p>If we want to break encapsulation, and are interested in an exhaustive and
+explicit union type, then a type alias gives the compiler enough info to
+determine that the match statement is in fact exhaustive:</p>
+
+<pre><code>type UUIDable is (User | Invoice)
+</code></pre>
+
+<pre><code>fun register_uuid(thing: UUIDable): RegistrationResult =&gt;
+  match thing
+  | let u: User =&gt; _register_user(u)
+  | let i: Invoice =&gt; _register_invoice(i)
+  end
+</code></pre>
+
+<p>Different situations will call for different approaches. The type alias
+approach means that anytime you add a new <code>UUIDable</code>, you'll have to redefine
+this alias, <em>and</em> have to go through all your <code>match</code> statements and add a new
+case. The silver lining is that the compiler will tell you which places you
+need to modify.</p>
+
+<p>Also, note that you can still call <code>thing.uuid()</code> and have it type-check, as
+the compiler can determine that all classes belonging to <code>(User | Invoice)</code>
+actually provide this method.</p>
+
+<h2>Encapsulation vs. exhaustiveness</h2>
+
+<p>Using traits (or interfaces for even more 'looseness') means that, in the
+large, your code will have to conform to the OOO practices of loose coupling,
+information hiding, and encapsulation.</p>
+
+<p>Using union types defined as type aliases means that encapsulation is no longer
+possible, but the compiler will guide you in making sure that matches are
+exhaustive when you take apart function arguments. This results in the code
+looking more 'functional' in the large.</p>
+
+<p>You can play around with this code in the <a href="https://playground.ponylang.io/?gist=429dcefd4ebc952c241bbbcaef3104c9">Pony playground</a>.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/2019/03/31/Uncrashable-languages-arent.html">⇦Uncrashable languages aren't</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
