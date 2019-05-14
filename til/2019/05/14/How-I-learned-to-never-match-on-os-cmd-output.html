@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>How I learned to never match on os:cmd output :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+/* code { font-size: small; } */
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body img { border: 1px solid #ddd; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>How I learned to never match on os:cmd output</h1>
+  <p class="post-date">Today I learned (2019-05-14)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">Erlang</span>
+  
+  <span class="tag">os:cmd</span>
+  
+  <span class="tag">matching</span>
+  
+  <span class="tag">hdfs</span>
+  
+</span>
+ </p>
+  <div class="heading"> </div>
+  <p>A late change in requirements from a customer had me scrambling to switch an
+HDFS connector script — from a <a href="https://pypi.org/project/hdfs/">Python program</a> — to the standard Hadoop
+tool <code>hdfs</code>.</p>
+
+<p>The application that was launching the connector script was written in Erlang,
+and was responsible for uploading some files to an HDFS endpoint, like so:</p>
+
+<pre><code>UploadCmd = lists:flatten(io_lib:format("hdfs put ~p ~p", [Here, There])),
+"" = os:cmd(UploadCmd),
+</code></pre>
+
+<p>This was all fine and dandy when the <code>UploadCmd</code> was implemented in full by
+me. When I switched out the Python script for the <code>hdfs</code> command, all my tests
+continued to work, and the data was indeed being written successfully to my
+<a href="http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/CLIMiniCluster.html">local test hdfs node</a>. So off to production it went.</p>
+
+<p>Several hours later I got notified that there's some problems with the new
+code. After inspecting the logs it became clear that the <code>hdfs</code> command was
+producing unexpected output (<code>WARN: blah blah took longer than expected (..)</code>)
+and causing the Erlang program to treat the upload operation as failed.</p>
+
+<p>As is the case for reasonable Erlang applications, the writing process would
+crash upon a failed match, then restart and attempt to continue where it left
+off — by trying to upload <code>Here</code> to <code>There</code>.  Now, this operation kept
+legitimately failing, because it had in fact succeeded the first time, and HDFS
+would not allow us to overwrite <code>There</code> (unless we added a <code>-f</code> flag to <code>put</code>).</p>
+
+<h3>The solution</h3>
+
+<p>The quick-and-dirty solution was to wrap the <code>UploadCmd</code> in a script that
+captured the exit code, and then printed it out at the end, like so:</p>
+
+<pre><code>sh -c '{UploadCmd}; RES=$?; echo; echo $RES'
+</code></pre>
+
+<p>Now, your Erlang code can match on the last line of the output and interpret it
+as a integer exit code. Not the most elegant of solutions, but elegant enough
+to work around <a href="http://erlang.org/doc/man/os.html#cmd-1">os:cmd/1</a>'s blindess to exit codes.</p>
+
+<h3>Lesson learned</h3>
+
+<p>The UNIX way states that programs should be silent on success and vocal on
+error. Sadly, many applications don't follow the UNIX way, and the bigger the
+application at hand, the higher the probability that one of its dependencies
+will use STDOUT or STDERR as its own personal scratchpad.</p>
+
+<p>My lesson: <strong>never rely on os:cmd/1 output in production code</strong>, unless the
+command you're running is fully under your control, and you can be certain that
+its outputs are completely and exhaustively specified by you.</p>
+
+<p>I do heavily rely on os:cmd output in test code, and I have no intention of
+stopping. Early feedback about unexpected output is great in tests.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html">⇦Uses for traits vs type aliases in Ponylang</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

@@ -7,6 +7,68 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>How I learned to never match on os:cmd output</title>
+        <description>
+	&lt;p&gt;A late change in requirements from a customer had me scrambling to switch an
+HDFS connector script — from a &lt;a href=&quot;https://pypi.org/project/hdfs/&quot;&gt;Python program&lt;/a&gt; — to the standard Hadoop
+tool &lt;code&gt;hdfs&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The application that was launching the connector script was written in Erlang,
+and was responsible for uploading some files to an HDFS endpoint, like so:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;UploadCmd = lists:flatten(io_lib:format(&quot;hdfs put ~p ~p&quot;, [Here, There])),
+&quot;&quot; = os:cmd(UploadCmd),
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;This was all fine and dandy when the &lt;code&gt;UploadCmd&lt;/code&gt; was implemented in full by
+me. When I switched out the Python script for the &lt;code&gt;hdfs&lt;/code&gt; command, all my tests
+continued to work, and the data was indeed being written successfully to my
+&lt;a href=&quot;http://hadoop.apache.org/docs/current/hadoop-project-dist/hadoop-common/CLIMiniCluster.html&quot;&gt;local test hdfs node&lt;/a&gt;. So off to production it went.&lt;/p&gt;
+
+&lt;p&gt;Several hours later I got notified that there's some problems with the new
+code. After inspecting the logs it became clear that the &lt;code&gt;hdfs&lt;/code&gt; command was
+producing unexpected output (&lt;code&gt;WARN: blah blah took longer than expected (..)&lt;/code&gt;)
+and causing the Erlang program to treat the upload operation as failed.&lt;/p&gt;
+
+&lt;p&gt;As is the case for reasonable Erlang applications, the writing process would
+crash upon a failed match, then restart and attempt to continue where it left
+off — by trying to upload &lt;code&gt;Here&lt;/code&gt; to &lt;code&gt;There&lt;/code&gt;.  Now, this operation kept
+legitimately failing, because it had in fact succeeded the first time, and HDFS
+would not allow us to overwrite &lt;code&gt;There&lt;/code&gt; (unless we added a &lt;code&gt;-f&lt;/code&gt; flag to &lt;code&gt;put&lt;/code&gt;).&lt;/p&gt;
+
+&lt;h3&gt;The solution&lt;/h3&gt;
+
+&lt;p&gt;The quick-and-dirty solution was to wrap the &lt;code&gt;UploadCmd&lt;/code&gt; in a script that
+captured the exit code, and then printed it out at the end, like so:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;sh -c '{UploadCmd}; RES=$?; echo; echo $RES'
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, your Erlang code can match on the last line of the output and interpret it
+as a integer exit code. Not the most elegant of solutions, but elegant enough
+to work around &lt;a href=&quot;http://erlang.org/doc/man/os.html#cmd-1&quot;&gt;os:cmd/1&lt;/a&gt;'s blindess to exit codes.&lt;/p&gt;
+
+&lt;h3&gt;Lesson learned&lt;/h3&gt;
+
+&lt;p&gt;The UNIX way states that programs should be silent on success and vocal on
+error. Sadly, many applications don't follow the UNIX way, and the bigger the
+application at hand, the higher the probability that one of its dependencies
+will use STDOUT or STDERR as its own personal scratchpad.&lt;/p&gt;
+
+&lt;p&gt;My lesson: &lt;strong&gt;never rely on os:cmd/1 output in production code&lt;/strong&gt;, unless the
+command you're running is fully under your control, and you can be certain that
+its outputs are completely and exhaustively specified by you.&lt;/p&gt;
+
+&lt;p&gt;I do heavily rely on os:cmd output in test code, and I have no intention of
+stopping. Early feedback about unexpected output is great in tests.&lt;/p&gt;
+
+	</description>
+        <pubDate>Tue, 14 May 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</guid>
+      </item>
+    
+      <item>
         <title>Uses for traits vs type aliases in Ponylang</title>
         <description>
 	&lt;p&gt;I realized today that while both &lt;a href=&quot;https://tutorial.ponylang.io/types/traits-and-interfaces.html&quot;&gt;traits&lt;/a&gt; and &lt;a href=&quot;https://tutorial.ponylang.io/types/type-aliases.html&quot;&gt;type aliases&lt;/a&gt; can be used
@@ -974,71 +1036,6 @@ fold_step(Fun, {Acc, Req}) -&amp;gt;
         <pubDate>Mon, 05 Feb 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</guid>
-      </item>
-    
-      <item>
-        <title>Mysterious 'bad_return' from supervisor</title>
-        <description>
-	&lt;p&gt;I was recently evaulating this &lt;a href=&quot;https://github.com/tkyshm/efluentc&quot;&gt;erlang fluentd
-client&lt;/a&gt; and got the following error when
-running &lt;code&gt;rebar3 ct&lt;/code&gt;:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;%%% efluentc_SUITE ==&amp;gt; {tc_auto_skip,
- {failed,
-  {efluentc_SUITE,init_per_suite,
-   {'EXIT',
-    {{badmatch,
-      {error,
-       {efluentc,
-        {bad_return,
-         {{efluentc_app,start,[normal,[]]},
-          {'EXIT',
-           {noproc,
-            {gen_server,call,[efluentc_sup,{start_child,[0]},infinity]}}}}}}}},
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;What's a &lt;code&gt;bad_return&lt;/code&gt;? It happens when the &lt;code&gt;init/1&lt;/code&gt; function in a supervisor
-module returns an invalid &lt;a href=&quot;http://erlang.org/doc/man/supervisor.html#Module:init-1&quot;&gt;supervisor
-spec&lt;/a&gt;. Still, the
-&lt;a href=&quot;https://travis-ci.org/tkyshm/efluentc&quot;&gt;project's Travis page&lt;/a&gt; shows the build
-as green! What gives?&lt;/p&gt;
-
-&lt;p&gt;It turns out that while the version of Erlang that I had been running, 17.5,
-supports maps, it does &lt;strong&gt;not&lt;/strong&gt; support the relatively new map-based supervisor
-spec API.&lt;/p&gt;
-
-&lt;p&gt;This spec was causing the error:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;%% Supervisor callbacks
-init([]) -&amp;gt;
-    SupFlags = #{
-      strategy  =&amp;gt; simple_one_for_one,
-      intensity =&amp;gt; 1000,
-      period    =&amp;gt; 3600
-    },
-
-    Child = #{
-      id       =&amp;gt; 'efluentc_client',
-      start    =&amp;gt; {'efluentc_client', start_link, []},
-      restart  =&amp;gt; permanent,
-      shutdown =&amp;gt; 2000,
-      type     =&amp;gt; worker,
-      modules  =&amp;gt; ['efluentc_client']
-    },
-
-    {ok, {SupFlags, [Child]}}.
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2&gt;Conclusion&lt;/h2&gt;
-
-&lt;p&gt;If you're having problems with supervisors crashing with &lt;code&gt;bad_return&lt;/code&gt;s, check
-your Erlang/OTP version. Map-based specs were added in &lt;a href=&quot;http://www.erlang.org/news/86&quot;&gt;Erlang
-18&lt;/a&gt;.&lt;/p&gt;
-
-	</description>
-        <pubDate>Fri, 02 Feb 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2018/02/02/Bad-return-from-supervisor.html</guid>
       </item>
     
   </channel>
