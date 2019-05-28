@@ -83,7 +83,7 @@ characteristics which make sense in different circumstances.&lt;/p&gt;
   fun uuid(): UUID
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;and you have a method that accepts object implementing said trait.&lt;/p&gt;
+&lt;p&gt;and you have a method that accepts objects implementing said trait.&lt;/p&gt;
 
 &lt;pre&gt;&lt;code&gt;  fun register_uuid(thing: UUIDable): RegistrationResult =&amp;gt;
 &lt;/code&gt;&lt;/pre&gt;
