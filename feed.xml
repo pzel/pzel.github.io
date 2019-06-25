@@ -7,6 +7,108 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Ruby apps under runit: notes to self</title>
+        <description>
+	&lt;p&gt;I was recently migrating nearly ten-year-old Ruby software from an Ubuntu 10:04
+VM to something more recent. It took me way longer than I expected, due to two
+major snags.&lt;/p&gt;
+
+&lt;h2&gt;Snag one: Bundler and per-user runsvdir&lt;/h2&gt;
+
+&lt;p&gt;The apps in their original Lucid Lynx setting were run from a bash script that
+resembled this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;while (/bin/true); do
+  (bundle exec 'thin -C config_foo.yml -R config.ru start' 2&amp;gt;&amp;amp;1)
+  echo &quot;Server died at `date`. Respawning..&quot; &amp;gt;&amp;amp;2
+  sleep 2
+done
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;The app stayed up for years, so I guess this unsophisticated approach was good
+enough. For ease of deployment (and improved logging, see point #2 below), I
+decided to move all ruby web apps on this VPS to a user-local
+&lt;a href=&quot;http://smarden.org/runit/&quot;&gt;runit&lt;/a&gt; supervision tree.&lt;/p&gt;
+
+&lt;p&gt;In practice, this means that there's a &lt;code&gt;/etc/service/webuser-sv&lt;/code&gt; directory,
+containing a runit service which launches a nested &lt;code&gt;runsvdir&lt;/code&gt; program as the
+&lt;code&gt;webuser-sv&lt;/code&gt; user.&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;$ cat /etc/service/webuser-sv
+#!/bin/sh
+exec 2&amp;gt;&amp;amp;1
+exec chpst -uwebuser runsvdir /home/webuser/service
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now, I can define all of &lt;code&gt;webuser&lt;/code&gt;'s ruby apps as entries under
+&lt;code&gt;/home/webuser/service/*&lt;/code&gt;, and have them supervised without bash hackery.&lt;/p&gt;
+
+&lt;p&gt;The snag was that the apps would crash with this error, but only when run as
+part of the runit supervision tree:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;2019-06-25_11:27:37.51241 `/` is not writable.
+2019-06-25_11:27:37.51244 Bundler will use `/tmp/bundler/home/unknown' as your home directory temporarily.
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;But if I ran the runit &lt;code&gt;run&lt;/code&gt; scripts by hand, the apps started up and worked correctly.&lt;/p&gt;
+
+&lt;p&gt;After a lot of false starts and pointless github issue rabbit-holes, I realized
+that the &lt;code&gt;runsvdir&lt;/code&gt; process managing the user-local supervision tree was
+launched with &lt;a href=&quot;http://smarden.org/runit/chpst.8.html&quot;&gt;chpst&lt;/a&gt; by the master
+runit supervisor. Specifying a UID for &lt;code&gt;chpst&lt;/code&gt; with &lt;code&gt;-u&lt;/code&gt; does not automatically
+mean that the profile for this user gets loaded. In particular, not even
+&lt;code&gt;$HOME&lt;/code&gt; was configured in the runit supervisor environment.&lt;/p&gt;
+
+&lt;p&gt;Bundler needs '$HOME' to be set, otherwise it gets confused.&lt;/p&gt;
+
+&lt;p&gt;Hence, my runit run files now look like this:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;exec 2&amp;gt;&amp;amp;1
+export RUBYOPT=-W0
+export HOME=/home/web
+export LANG=en_US.UTF-8
+cd /home/web/webapp.1.com
+exec bundle exec rackup -E production -s thin -o 0.0.0.0 -p 4567 config.ru
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Duplication could be further removed by setting up an &lt;code&gt;envdir&lt;/code&gt;, and running the
+user-level &lt;code&gt;runsvdir&lt;/code&gt; with this envdir passed to &lt;code&gt;chpst&lt;/code&gt; ...  but the above
+solution is good enough for today.&lt;/p&gt;
+
+&lt;h2&gt;Snag two: Don't ever redirect $stdin and $stderr&lt;/h2&gt;
+
+&lt;p&gt;Runit has a wonderfully clean approach to logging, predating the &lt;a href=&quot;https://12factor.net/&quot;&gt;12-factor
+app&lt;/a&gt;, but very similar in spirit. Run your app in the
+foreground, and pipe its output to your log processor. This way applications
+themselves never need to concern themselves with logging frameworks and
+infrastructure.&lt;/p&gt;
+
+&lt;p&gt;Now ten years ago, when I launched these apps from bash scripts, they apps
+themselves &lt;strong&gt;definitely&lt;/strong&gt; needed to know what to do with their logs. Hence,
+these two monstrous lines:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;settings.configure do |s|
+    $stdout = File.open(&quot;log/log_out.txt&quot;,&quot;a&quot;)
+    $stderr = File.open(&quot;log/log_err.txt&quot;,&quot;a&quot;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;These two lines had me stumped as to why an app was silently crashing at
+startup with nothing in the runit logs. After removing the two lines I was
+able to see the real reason for the crash (some missing assets).&lt;/p&gt;
+
+&lt;p&gt;Sure, the exception had been logged all along to &lt;code&gt;log/log_err.txt&lt;/code&gt;, but I'd
+completely forgotten to look there, expecting the logging to be handled by
+runit's log facility.&lt;/p&gt;
+
+&lt;p&gt;Never redirect $stdout and $stdin inside the app, kids. Your future self will thank you.&lt;/p&gt;
+
+	</description>
+        <pubDate>Tue, 25 Jun 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</guid>
+      </item>
+    
+      <item>
         <title>How I learned to never match on os:cmd output</title>
         <description>
 	&lt;p&gt;A late change in requirements from a customer had me scrambling to switch an
@@ -924,118 +1026,6 @@ function&lt;/a&gt; from the &lt;code&gt;File&lt;/code&gt; module.&lt;/p&gt;
         <pubDate>Tue, 20 Mar 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</guid>
-      </item>
-    
-      <item>
-        <title>Folding on cowboy_req</title>
-        <description>Streamlined use of a streamlined API
-	&lt;h2&gt;The problem&lt;/h2&gt;
-
-&lt;p&gt;Pre-1.x versions of &lt;a href=&quot;https://github.com/ninenines/cowboy&quot;&gt;cowboy&lt;/a&gt; have an elegant, minimalist, and uniform API for
-grabbing data out of &lt;code&gt;http_req&lt;/code&gt; records. This API includes functions like:
-&lt;code&gt;cowboy_req:header/3&lt;/code&gt;, &lt;code&gt;cowboy_req:qs_vals/1&lt;/code&gt;, etc.&lt;/p&gt;
-
-&lt;p&gt;Their elegance and uniformity come from the fact that they all return the tuple
-&lt;code&gt;{A, NewReq}&lt;/code&gt;, such that &lt;code&gt;A&lt;/code&gt; is the result of the function call, and &lt;code&gt;NewReq&lt;/code&gt;
-is the potentially-transformed, new request record that you should use
-thereafter.&lt;/p&gt;
-
-&lt;p&gt;Suppose your business requirements dictate that you have to gather a lot of
-data from a request, and then &lt;code&gt;do_something()&lt;/code&gt; with it. What ends up happening
-is that your code begins to look like the following:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;{OriginalIp, Req1} = cowboy_req:header(&amp;lt;&amp;lt;&quot;x-forwarded-for&quot;&amp;gt;&amp;gt;, Req, &amp;lt;&amp;lt;&amp;gt;&amp;gt;),
-{UserAgent, Req2} = cowboy_req:header(&amp;lt;&amp;lt;&quot;user-agent&quot;&amp;gt;&amp;gt;, Req1, &amp;lt;&amp;lt;&amp;gt;&amp;gt;),
-{QsVals, Req3} = cowboy_req:qs_vals(Req2),
-{Path, Req4} = cowboy_req:path(Req4),
-Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
-{ok, Reply, Req4}.
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This gets tedious fast, and causes problems if you want to add or remove some
-of the intermediate steps. For example: removing the assignment to &lt;code&gt;Req2&lt;/code&gt; would
-force you to rename all following variables, or leave a 'hole' and rename
-&lt;code&gt;Req1&lt;/code&gt; to &lt;code&gt;Req2&lt;/code&gt; in the previous line. Inelegant options, both.&lt;/p&gt;
-
-&lt;h2&gt;The solution&lt;/h2&gt;
-
-&lt;p&gt;As the wonderful &lt;a href=&quot;http://www.cs.nott.ac.uk/~pszgmh/fold.pdf&quot;&gt;tutorial on the universality and expresiveness of fold&lt;/a&gt; will
-tell you, &lt;code&gt;fold&lt;/code&gt; is the best function. We can clean up the above code and
-remove our useless assignments to numbered variables by using the following
-pattern.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;{[OriginalIp, UserAgent, QsVals, Path], NewReq} =
-  fold_req([fun(R) -&amp;gt; cowboy_req:header(&amp;lt;&amp;lt;&quot;x-forwarded-for&quot;&amp;gt;&amp;gt;, R, &amp;lt;&amp;lt;&amp;gt;&amp;gt;) end,
-            fun(R) -&amp;gt; cowboy_req:header(&amp;lt;&amp;lt;&quot;user-agent&quot;&amp;gt;&amp;gt;, R, &amp;lt;&amp;lt;&amp;gt;&amp;gt;) end,
-            fun(R) -&amp;gt; cowboy_req:qs_vals(R) end,
-            fun(R) -&amp;gt; cowboy_req:path(R) end]
-            Req),
-Reply = do_something(OriginalIp, UserAgent, QsVals, Path),
-{ok, Reply, NewReq}.
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Yes, that's 2 extra lines of overhead, but the gain is that we don't have to
-keep track of the various &lt;code&gt;Req&lt;/code&gt;s that abound in the code above.&lt;/p&gt;
-
-&lt;p&gt;All of the functions in the chain are completely independent, and we can add or
-remove them as we see fit, without having to rearrange all the code.&lt;/p&gt;
-
-&lt;h2&gt;The implemenation&lt;/h2&gt;
-
-&lt;p&gt;The implementation of &lt;code&gt;fold_req/2&lt;/code&gt; is trivial, so if you're up for the task,
-&lt;strong&gt;try to write it yourself, now&lt;/strong&gt;.&lt;/p&gt;
-
-&lt;p&gt;Scroll below to see my take on the solution.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;----------------------------------------------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---------------------- SPOILERS BELOW ---------------------
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-----------------------------------------------------------
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2&gt;The actual implementation&lt;/h2&gt;
-
-&lt;pre&gt;&lt;code&gt;fold_req(Funs, Req) -&amp;gt; 
-    lists:foldr(fun fold_step/2, {[], Req}, Funs).
-
-fold_step(Fun, {Acc, Req}) -&amp;gt;
-    {Val, NewReq} = Fun(Req),
-    {[Val|Acc], NewReq}.
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Cheers!&lt;/p&gt;
-
-	</description>
-        <pubDate>Mon, 05 Feb 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2018/02/05/Folding-on-cowboy_req.html</guid>
       </item>
     
   </channel>

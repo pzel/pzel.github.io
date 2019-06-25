@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Ruby apps under runit: notes to self :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+/* code { font-size: small; } */
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body img { border: 1px solid #ddd; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Ruby apps under runit: notes to self</h1>
+  <p class="post-date">Today I learned (2019-06-25)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">ruby,</span>
+  
+  <span class="tag">runit,</span>
+  
+  <span class="tag">bundler</span>
+  
+</span>
+ </p>
+  <div class="heading"> </div>
+  <p>I was recently migrating nearly ten-year-old Ruby software from an Ubuntu 10:04
+VM to something more recent. It took me way longer than I expected, due to two
+major snags.</p>
+
+<h2>Snag one: Bundler and per-user runsvdir</h2>
+
+<p>The apps in their original Lucid Lynx setting were run from a bash script that
+resembled this:</p>
+
+<pre><code>while (/bin/true); do
+  (bundle exec 'thin -C config_foo.yml -R config.ru start' 2&gt;&amp;1)
+  echo "Server died at `date`. Respawning.." &gt;&amp;2
+  sleep 2
+done
+</code></pre>
+
+<p>The app stayed up for years, so I guess this unsophisticated approach was good
+enough. For ease of deployment (and improved logging, see point #2 below), I
+decided to move all ruby web apps on this VPS to a user-local
+<a href="http://smarden.org/runit/">runit</a> supervision tree.</p>
+
+<p>In practice, this means that there's a <code>/etc/service/webuser-sv</code> directory,
+containing a runit service which launches a nested <code>runsvdir</code> program as the
+<code>webuser-sv</code> user.</p>
+
+<pre><code>$ cat /etc/service/webuser-sv
+#!/bin/sh
+exec 2&gt;&amp;1
+exec chpst -uwebuser runsvdir /home/webuser/service
+</code></pre>
+
+<p>Now, I can define all of <code>webuser</code>'s ruby apps as entries under
+<code>/home/webuser/service/*</code>, and have them supervised without bash hackery.</p>
+
+<p>The snag was that the apps would crash with this error, but only when run as
+part of the runit supervision tree:</p>
+
+<pre><code>2019-06-25_11:27:37.51241 `/` is not writable.
+2019-06-25_11:27:37.51244 Bundler will use `/tmp/bundler/home/unknown' as your home directory temporarily.
+</code></pre>
+
+<p>But if I ran the runit <code>run</code> scripts by hand, the apps started up and worked correctly.</p>
+
+<p>After a lot of false starts and pointless github issue rabbit-holes, I realized
+that the <code>runsvdir</code> process managing the user-local supervision tree was
+launched with <a href="http://smarden.org/runit/chpst.8.html">chpst</a> by the master
+runit supervisor. Specifying a UID for <code>chpst</code> with <code>-u</code> does not automatically
+mean that the profile for this user gets loaded. In particular, not even
+<code>$HOME</code> was configured in the runit supervisor environment.</p>
+
+<p>Bundler needs '$HOME' to be set, otherwise it gets confused.</p>
+
+<p>Hence, my runit run files now look like this:</p>
+
+<pre><code>exec 2&gt;&amp;1
+export RUBYOPT=-W0
+export HOME=/home/web
+export LANG=en_US.UTF-8
+cd /home/web/webapp.1.com
+exec bundle exec rackup -E production -s thin -o 0.0.0.0 -p 4567 config.ru
+</code></pre>
+
+<p>Duplication could be further removed by setting up an <code>envdir</code>, and running the
+user-level <code>runsvdir</code> with this envdir passed to <code>chpst</code> ...  but the above
+solution is good enough for today.</p>
+
+<h2>Snag two: Don't ever redirect $stdin and $stderr</h2>
+
+<p>Runit has a wonderfully clean approach to logging, predating the <a href="https://12factor.net/">12-factor
+app</a>, but very similar in spirit. Run your app in the
+foreground, and pipe its output to your log processor. This way applications
+themselves never need to concern themselves with logging frameworks and
+infrastructure.</p>
+
+<p>Now ten years ago, when I launched these apps from bash scripts, they apps
+themselves <strong>definitely</strong> needed to know what to do with their logs. Hence,
+these two monstrous lines:</p>
+
+<pre><code>settings.configure do |s|
+    $stdout = File.open("log/log_out.txt","a")
+    $stderr = File.open("log/log_err.txt","a")
+</code></pre>
+
+<p>These two lines had me stumped as to why an app was silently crashing at
+startup with nothing in the runit logs. After removing the two lines I was
+able to see the real reason for the crash (some missing assets).</p>
+
+<p>Sure, the exception had been logged all along to <code>log/log_err.txt</code>, but I'd
+completely forgotten to look there, expecting the logging to be handled by
+runit's log facility.</p>
+
+<p>Never redirect $stdout and $stdin inside the app, kids. Your future self will thank you.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html">⇦How I learned to never match on os:cmd output</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>
