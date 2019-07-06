@@ -42,7 +42,7 @@ goals of deleting old data, slimming down index bloat, and reclaiming space for 
 OS, was to:&lt;/p&gt;
 
 &lt;ol&gt;
-&lt;li&gt;dump the entire DB to a text file of SQL statements (a.k.a &lt;code&gt;dump&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;export the entire DB to a text file of SQL statements (a.k.a a &lt;code&gt;dump&lt;/code&gt;)&lt;/li&gt;
 &lt;li&gt;remove the existing database completely&lt;/li&gt;
 &lt;li&gt;clean up the dump in text form&lt;/li&gt;
 &lt;li&gt;import the trimmed-down dump into a fresh database&lt;/li&gt;
