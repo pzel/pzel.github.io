@@ -1,0 +1,195 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="google-site-verification" content=""/>
+    <meta name=viewport content="width=device-width, initial-scale=1"/>
+    <title>Plain text & un*x tools are still the best :: Simon Zelazny's Blog</title>
+    <link rel="author" href="/humans.txt" />
+    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <style type="text/css">@media(max-width: 800px) {
+  img { display: inline-block; width: 100%;}
+  #content { margin: 0em 1em; }
+  #rfooter { float:left; }
+}
+@media(min-width: 800px) {
+  #content { max-width: 42em; margin: 0em 4em; }
+  #rfooter { float: right; }
+  .post-list { columns: 20em auto; }
+}
+body { font-size: 133%; font-family: "Times", serif; padding: 2px; margin: 0; line-height: 1.4;}
+h1,h2,h3,h4,h5 { font-family: 'Fira Sans', sans-serif; text-align: left; }
+/* code { font-size: small; } */
+blockquote { border-left: 1px solid #eee; padding-left: 1em;}
+a{ color: black; }
+a:visited{ color: #441f66; }
+h1#main-title { margin-bottom:0; }
+header { margin-bottom: 2em; clear: both; }
+header img {float: left; margin: 1em 1em 0 0; max-width: 4.5em; max-height: 4.5em; border: 1px solid black;}
+header h3 { font-style: italic; margin: 0; }
+header h1, header h3 { display: inline-block;}
+section h3 { margin: 0; }
+.post-list { clear: both; margin: 0;}
+.post-list ul { padding-left: 0; margin: 0.5em 0 3em 0;}
+.post-list li { margin-bottom: 1em; margin-left: 0; list-style-type: none; }
+.post-list li .outline { margin: 0; }
+img.inset { float: right; padding-left: 2em;}
+div.post-nav { border-top: 1px #eee solid; margin: 2em 0; padding: 1em 0;}
+div.post-nav > div { font-size: 90%; float: left; width: 33%; }
+div.post-nav > div.next { text-align:right;}
+div.post-nav > div.up { text-align:center;}
+footer { border-top: 1px #eee solid; }
+#lfooter { float: left; }
+#rfooter { margin-left: 1em; }
+footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
+.post-body .heading { font-style:italic; margin-bottom: 2em; border-bottom: #eee 1px solid; }
+.post-body .post-date { font-style:italic; }
+.post-body > h1 { margin-bottom: 0; }
+.post-body h2, .post-body h3, .post-body h4 { margin-top: 1.5em; font-weight: bold; }
+.post-body > p > code { line-height: inherit; padding: 0 0.3em; border: 1px solid #ddd;  }
+.post-body img { border: 1px solid #ddd; }
+.post-body pre { padding: 15px; border: 1px solid #ddd; overflow-x: auto; font-size: smaller;}
+.post-body { text-align: left; }
+.tag { font-size: smaller; font-family: sans-serif; background: #efefef; padding: 0.05em 0.5em ; border-radius: 10px; font-style: italic; }
+</style>
+  </head>
+  <body>
+    <div id="content" class="clearfix"> <div class="post-body">
+  <h1>Plain text & un*x tools are still the best</h1>
+  <p class="post-date">Today I learned (2019-07-06)<br/>
+    Tagged: <span class="tags">
+  
+  <span class="tag">awk</span>
+  
+  <span class="tag">sql</span>
+  
+  <span class="tag">posgres</span>
+  
+</span>
+ </p>
+  <div class="heading"> </div>
+  <p>I did some freelance work for a friendly company that had a problem with its
+production dataset. They had a Postgres database, running on a 1TB drive,
+holding historic data in a ~500GB table.</p>
+
+<p>The historic data wasn't needed for anything aside from archival reasons, so
+the developers had tried — in between feature work — to remove the old rows
+while maintaining DB uptime. Unfortunately, all their previous attempts at
+clearing out obsolete data had failed.</p>
+
+<p>Here's what they tried (on clones of the production VM):</p>
+
+<ul>
+<li><code>DELETE FROM samples WHERE timestamp &lt; 1234567890</code></li>
+<li><code>VACUUM</code></li>
+<li><code>VACUUM FULL</code></li>
+<li><code>INSERT INTO new_samples SELECT * FROM samples WHERE (..)</code>,
+followed by <code>TRUNCATE TABLE samples</code> and rename</li>
+</ul>
+
+
+<p>All of these experiments failed to inspire confidence, as they either filled up
+the available hard drive space with temporary data, or took so long that the
+potential downtime was deemed unacceptable (looking at you, <code>VACUUM FULL</code>). In
+particular, any operation that tried to rebuild the <code>samples</code> table afresh
+would fail. This was due to the fact that the disk was too small to hold two
+copies of the table, as dictated by the atomicity requirement of SQL
+operations.</p>
+
+<p>After some experimentation, we determined that the fastest way to achieve our
+goals of deleting old data, slimming down index bloat, and reclaiming space for the
+OS, was to:</p>
+
+<ol>
+<li>dump the entire DB to a text file of SQL statements (a.k.a <code>dump</code>)</li>
+<li>remove the existing database completely</li>
+<li>clean up the dump in text form</li>
+<li>import the trimmed-down dump into a fresh database</li>
+</ol>
+
+
+<p>This operation proved to be the fastest and most efficient in terms of
+disk-space required, although we were forced to incur downtime.</p>
+
+<h2>The joy of AWK</h2>
+
+<p>A concise AWK script was perfect for the job:</p>
+
+<pre><code>1.   BEGIN { in_samples=0; min_ts=1514764800; }
+2.   /^\\.$/ { if (in_samples==1) { in_samples=0; } }
+3.   // {
+4.     if (in_samples) {
+5.       if ($1 &gt;= min_ts) { print } else { } ;
+6.     } else {
+7.       print
+8.     }
+9.   }
+10.  /COPY public.samples/ { in_samples=1; }
+</code></pre>
+
+<p>In short, the script can be in 2 states:</p>
+
+<pre><code>in_samples := 0 | 1
+</code></pre>
+
+<p>It starts out in <code>in_samples=0</code> (<code>1.</code>), and copies over every line of text
+(<code>7.</code>). If it finds the first line of the beginning of the <code>samples</code> table
+(<code>10.</code>), it switches to <code>in_samples=1</code>. In this state, it will only copy over
+samples that are NEWER than January 1, 2018 (<code>5.</code>). If it finds the
+end-of-table-data marker and is <code>in_samples</code>, it will exit this state
+(<code>2.</code>). Unless there are two tables in the dump named <code>public.samples</code> (there
+aren't), the script will never enter <code>in_samples=1</code> again, and will simply copy
+over all other rows verbatim (line <code>7.</code>, again).</p>
+
+<p>It's important to note that <code>awk</code> evaluates all clauses in order for every line
+of input (except for the special <a href="https://www.gnu.org/software/gawk/manual/html_node/Using-BEGIN_002fEND.html"><code>BEGIN</code> and <code>END</code>
+clauses</a>),
+so some lines of input might 'hit' several awk statements. This is beneficial,
+but also means that the order of the clauses is important. (Consider what would
+happen if the clause on line <code>10.</code> had been placed before the clause on line
+<code>3.</code>?)</p>
+
+<h2>Summing up</h2>
+
+<p>The entire operation of <code>pg_dumpall</code>, <code>awk</code>, and <code>psql</code> import took around 3
+hours, which was acceptable downtime for this database as part of scheduled
+nighttime maintenance. The space taken up by the Postgres <code>data</code> directory went
+down from ~760GB to ~200GB.</p>
+
+<p>That day I learned that plain text is <strong>still</strong> the <em>lingua franca</em> of UN*X,
+and that 40-year-old tools are still excellent at what they were built to do.</p>
+
+  <div class="post-nav">
+    <div class="prev">
+      
+      <a href="/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html">⇦Ruby apps under runit: notes to self</a>
+      
+    </div>
+    <div class="up"><a href="/">⇧Back to top</a></div>
+    <div class="next">
+       &nbsp;
+      
+    </div>
+    <div>&nbsp;</div>
+    <footer>
+  <div id="lfooter">
+    <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
+  </div>
+  <div id="rfooter">
+      <span class='contact'><a class='em_contact' href='mail&#116;o&#58;&#122;&#101;&#108;&#97;&#122;&#110;&#121;&#64;&#109;&#97;&#105;&#108;&#98;&#111;&#120;&#46;&#111;&#114;&#103;?subject='>&#101;&#109;&#97;&#105;&#108;</a></span>
+    | <span class='tweet'><a target="_blank" href="https://twitter.com/simonzelazny">twitter</a></span>
+    | <span class='gh'><a target="_blank" href="https://github.com/pzel">github</a></span>
+    | <span class='feed'><a href="/feed.xml">RSS</a></span>
+    | <span class='license'>
+    <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/3.0/deed">CC BY-NC-SA 3.0</a>
+  </span>
+  </div>
+  <span style="clear:both">&nbsp;</span>
+</footer>
+
+  </div>
+</div>
+
+    </div>
+  </body>
+</html>

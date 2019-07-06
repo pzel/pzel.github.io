@@ -7,6 +7,106 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>Plain text &amp; un*x tools are still the best</title>
+        <description>
+	&lt;p&gt;I did some freelance work for a friendly company that had a problem with its
+production dataset. They had a Postgres database, running on a 1TB drive,
+holding historic data in a ~500GB table.&lt;/p&gt;
+
+&lt;p&gt;The historic data wasn't needed for anything aside from archival reasons, so
+the developers had tried — in between feature work — to remove the old rows
+while maintaining DB uptime. Unfortunately, all their previous attempts at
+clearing out obsolete data had failed.&lt;/p&gt;
+
+&lt;p&gt;Here's what they tried (on clones of the production VM):&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;DELETE FROM samples WHERE timestamp &amp;lt; 1234567890&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;VACUUM&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;VACUUM FULL&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;INSERT INTO new_samples SELECT * FROM samples WHERE (..)&lt;/code&gt;,
+followed by &lt;code&gt;TRUNCATE TABLE samples&lt;/code&gt; and rename&lt;/li&gt;
+&lt;/ul&gt;
+
+
+&lt;p&gt;All of these experiments failed to inspire confidence, as they either filled up
+the available hard drive space with temporary data, or took so long that the
+potential downtime was deemed unacceptable (looking at you, &lt;code&gt;VACUUM FULL&lt;/code&gt;). In
+particular, any operation that tried to rebuild the &lt;code&gt;samples&lt;/code&gt; table afresh
+would fail. This was due to the fact that the disk was too small to hold two
+copies of the table, as dictated by the atomicity requirement of SQL
+operations.&lt;/p&gt;
+
+&lt;p&gt;After some experimentation, we determined that the fastest way to achieve our
+goals of deleting old data, slimming down index bloat, and reclaiming space for the
+OS, was to:&lt;/p&gt;
+
+&lt;ol&gt;
+&lt;li&gt;dump the entire DB to a text file of SQL statements (a.k.a &lt;code&gt;dump&lt;/code&gt;)&lt;/li&gt;
+&lt;li&gt;remove the existing database completely&lt;/li&gt;
+&lt;li&gt;clean up the dump in text form&lt;/li&gt;
+&lt;li&gt;import the trimmed-down dump into a fresh database&lt;/li&gt;
+&lt;/ol&gt;
+
+
+&lt;p&gt;This operation proved to be the fastest and most efficient in terms of
+disk-space required, although we were forced to incur downtime.&lt;/p&gt;
+
+&lt;h2&gt;The joy of AWK&lt;/h2&gt;
+
+&lt;p&gt;A concise AWK script was perfect for the job:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;1.   BEGIN { in_samples=0; min_ts=1514764800; }
+2.   /^\\.$/ { if (in_samples==1) { in_samples=0; } }
+3.   // {
+4.     if (in_samples) {
+5.       if ($1 &amp;gt;= min_ts) { print } else { } ;
+6.     } else {
+7.       print
+8.     }
+9.   }
+10.  /COPY public.samples/ { in_samples=1; }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;In short, the script can be in 2 states:&lt;/p&gt;
+
+&lt;pre&gt;&lt;code&gt;in_samples := 0 | 1
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;It starts out in &lt;code&gt;in_samples=0&lt;/code&gt; (&lt;code&gt;1.&lt;/code&gt;), and copies over every line of text
+(&lt;code&gt;7.&lt;/code&gt;). If it finds the first line of the beginning of the &lt;code&gt;samples&lt;/code&gt; table
+(&lt;code&gt;10.&lt;/code&gt;), it switches to &lt;code&gt;in_samples=1&lt;/code&gt;. In this state, it will only copy over
+samples that are NEWER than January 1, 2018 (&lt;code&gt;5.&lt;/code&gt;). If it finds the
+end-of-table-data marker and is &lt;code&gt;in_samples&lt;/code&gt;, it will exit this state
+(&lt;code&gt;2.&lt;/code&gt;). Unless there are two tables in the dump named &lt;code&gt;public.samples&lt;/code&gt; (there
+aren't), the script will never enter &lt;code&gt;in_samples=1&lt;/code&gt; again, and will simply copy
+over all other rows verbatim (line &lt;code&gt;7.&lt;/code&gt;, again).&lt;/p&gt;
+
+&lt;p&gt;It's important to note that &lt;code&gt;awk&lt;/code&gt; evaluates all clauses in order for every line
+of input (except for the special &lt;a href=&quot;https://www.gnu.org/software/gawk/manual/html_node/Using-BEGIN_002fEND.html&quot;&gt;&lt;code&gt;BEGIN&lt;/code&gt; and &lt;code&gt;END&lt;/code&gt;
+clauses&lt;/a&gt;),
+so some lines of input might 'hit' several awk statements. This is beneficial,
+but also means that the order of the clauses is important. (Consider what would
+happen if the clause on line &lt;code&gt;10.&lt;/code&gt; had been placed before the clause on line
+&lt;code&gt;3.&lt;/code&gt;?)&lt;/p&gt;
+
+&lt;h2&gt;Summing up&lt;/h2&gt;
+
+&lt;p&gt;The entire operation of &lt;code&gt;pg_dumpall&lt;/code&gt;, &lt;code&gt;awk&lt;/code&gt;, and &lt;code&gt;psql&lt;/code&gt; import took around 3
+hours, which was acceptable downtime for this database as part of scheduled
+nighttime maintenance. The space taken up by the Postgres &lt;code&gt;data&lt;/code&gt; directory went
+down from ~760GB to ~200GB.&lt;/p&gt;
+
+&lt;p&gt;That day I learned that plain text is &lt;strong&gt;still&lt;/strong&gt; the &lt;em&gt;lingua franca&lt;/em&gt; of UN*X,
+and that 40-year-old tools are still excellent at what they were built to do.&lt;/p&gt;
+
+	</description>
+        <pubDate>Sat, 06 Jul 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/til/2019/07/06/Plain-text-&-un-x-tools-are-still-the-best.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/07/06/Plain-text-&-un-x-tools-are-still-the-best.html</guid>
+      </item>
+    
+      <item>
         <title>Ruby apps under runit: notes to self</title>
         <description>
 	&lt;p&gt;I was recently migrating nearly ten-year-old Ruby software from an Ubuntu 10:04
@@ -989,43 +1089,6 @@ in Haskell does indeed have the type &lt;code&gt;IO Hostname&lt;/code&gt;.&lt;/p
         <pubDate>Wed, 21 Mar 2018 00:00:00 +0100</pubDate>
         <link>http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</link>
         <guid isPermaLink="true">http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</guid>
-      </item>
-    
-      <item>
-        <title>Elixir's System.cmd and '*' expansion</title>
-        <description>
-	&lt;p&gt;I recently tried to use Elixir's
-&lt;a href=&quot;https://hexdocs.pm/elixir/System.html#cmd/3&quot;&gt;&lt;code&gt;System.cmd/2&lt;/code&gt;&lt;/a&gt; to clear some
-on-disk state, as part of a test. Unfortunately, my tests started to fail for
-unclear reasons, and closer inspection proved that the state was &lt;em&gt;not&lt;/em&gt; being
-cleared.&lt;/p&gt;
-
-&lt;p&gt;Here's the command I was using:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt; {&quot;&quot;, 0} = System.cmd(&quot;rm&quot;, [&quot;-rf&quot;, &quot;/tmp/myapp.mymodule/*&quot;])
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Had I read the manual page linked above, I'd have known that:&lt;/p&gt;
-
-&lt;blockquote&gt;&lt;p&gt;wildcard expansion will not happen (unless Path.wildcard/2 is used explicitly)&lt;/p&gt;&lt;/blockquote&gt;
-
-&lt;p&gt;What ended up happening was that the &lt;code&gt;*&lt;/code&gt; was being passed verbatim to the &lt;code&gt;rm&lt;/code&gt;
-command. Since no such file existed inside the directory, nothing was
-actually deleted.&lt;/p&gt;
-
-&lt;p&gt;I changed the invocation to simply delete the entire directory, avoiding
-expansion:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt; {&quot;&quot;, 0} = System.cmd(&quot;rm&quot;, [&quot;-rf&quot;, &quot;/tmp/myapp.mymodule&quot;])
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The non-hacky solution is to use an &lt;a href=&quot;https://hexdocs.pm/elixir/File.html#rm_rf/1&quot;&gt;appropriate
-function&lt;/a&gt; from the &lt;code&gt;File&lt;/code&gt; module.&lt;/p&gt;
-
-	</description>
-        <pubDate>Tue, 20 Mar 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2018/03/20/Elixir-cmd-star-expansion.html</guid>
       </item>
     
   </channel>
