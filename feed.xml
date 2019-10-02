@@ -7,6 +7,50 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>For focused reading, disconnect wifi</title>
+        <description>
+	&lt;p&gt;Today I had a 50-page PDF whitepaper to read. I didn't know how long it was
+going to take, and — wanting to conserve my laptop battery charge – I disabled
+my wifi. It took me suprisingly little time to skim the paper and dig into the
+more relevant parts in detail, taking some notes as I went along.&lt;/p&gt;
+
+&lt;p&gt;During the ~2 hours it took me to work through the paper, I'd tried to access
+the Internet about ten times. Be it by clicking a link in the whitepaper
+itself, or trying to follow up a tangential thought with some info online. But!
+My wifi was switched off, and I'd need to click the network manager icon to
+re-connect to the net. I chose not to do that, and instead continue
+reading.&lt;/p&gt;
+
+&lt;p&gt;Each time my impulse to access information was frustrated, I realized that &lt;em&gt;had
+I been online&lt;/em&gt;, I would have wasted precious minutes reading
+tangentially-related web pages, and then more time trying to get back to
+reading the original PDF — reestablishing context and exerting willpower to
+stay in the PDF reader.&lt;/p&gt;
+
+&lt;p&gt;Acting on these distractions would have prevented me from ingesting the
+whitepaper in 2 hours.&lt;/p&gt;
+
+&lt;p&gt;After the fact, I realized that what I'd achieved accidentally is the
+productivity hack identified by Matt Might as &lt;a href=&quot;http://matt.might.net/articles/cripple-your-technology/&quot;&gt;crippling your
+technology&lt;/a&gt;. Be
+removing functionality from our tools and keeping that which is &lt;em&gt;strictly
+necessary&lt;/em&gt; for completing the task at hand, we remove the 'friction' that gets
+in the way of sustained attention. Yes, we do &quot;lose&quot; some capabilities, but we
+make up for it by making it easier for ourselved to focus on the goal.&lt;/p&gt;
+
+&lt;p&gt;I'll try to keep this technique in my toolbelt, especially when I need long
+periods of focus.&lt;/p&gt;
+
+&lt;p&gt;Apart from Matt Might's productivity writings, a lot more in this vein can be
+found in &lt;a href=&quot;http://www.calnewport.com/blog/&quot;&gt;Cal Newport&lt;/a&gt;'s books &amp;amp; blog posts.&lt;/p&gt;
+
+	</description>
+        <pubDate>Wed, 02 Oct 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</guid>
+      </item>
+    
+      <item>
         <title>Plain text &amp; un*x tools are still the best</title>
         <description>
 	&lt;p&gt;I did some freelance work for a friendly company that had a problem with its
@@ -1030,65 +1074,6 @@ make sure your user is part of the &lt;code&gt;lpadmin&lt;/code&gt; group.&lt;/p
         <pubDate>Tue, 27 Mar 2018 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</guid>
-      </item>
-    
-      <item>
-        <title>Is node/0 a pure function?</title>
-        <description>Thinking about Erlang functions in Haskell types
-	&lt;p&gt;I had a very interesting debate with a co-worker today.&lt;/p&gt;
-
-&lt;p&gt;I'd pointed out that the following filter expression felt like it was doing
-unnecessary &lt;code&gt;IO&lt;/code&gt;, in the Haskell sense:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;Enum.filter(fn {pid, _} -&amp;gt; :erlang.node(pid) == node() end)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;The argument was simply that &lt;code&gt;node/0&lt;/code&gt; was not a pure function, and using such a
-function as a predicate to &lt;code&gt;Enum.filter/2&lt;/code&gt; felt somewhat inelegant.  It was an
-off-hand comment, and I didn't think much about it, until the author of the
-code in question challenged me on what it means for a function to be pure.&lt;/p&gt;
-
-&lt;p&gt;The gist of the argument was: since &lt;code&gt;node()&lt;/code&gt; always returns the same thing
-throughout the run of a program on a given instance of the BEAM, is that not
-the same as purity, for all practical purposes?&lt;/p&gt;
-
-&lt;p&gt;All my theoretical arguments (like how running the code on different machines
-yields different results) seemed unconvincing to the colleague. His argument
-about &lt;code&gt;node()&lt;/code&gt; being effectively a global constant in the context of the VM
-seemed to suffice for him to treat it like a pure function.&lt;/p&gt;
-
-&lt;p&gt;When theory fails (or the theorizer is not convincing enough), practice comes
-to the rescue. Here is a code snippet which proves that &lt;code&gt;node()&lt;/code&gt; is &lt;em&gt;not&lt;/em&gt; pure,
-because it implicity depends on the state of the &lt;code&gt;net_kernel&lt;/code&gt; application:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;erl -eval &quot;
-{ok, _} = net_kernel:start(['hello@kitty', shortnames]),
-erlang:display(node()),
-net_kernel:stop(),
-{ok, _} = net_kernel:start(['bye@kitty', shortnames]),
-erlang:display(node()).
-&quot; -s erlang halt
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This will output two different values for &lt;code&gt;node()&lt;/code&gt;:&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;Eshell V8.3.5.3  (abort with ^G)
-1&amp;gt; 'hello@kitty'
-'bye@kitty'
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;This demonstrates that &lt;code&gt;node/0&lt;/code&gt; is &lt;em&gt;not&lt;/em&gt; a pure function, even in the
-loose-but-practical sense of always returning the same value during one run of
-a program.&lt;/p&gt;
-
-&lt;p&gt;For comparison, the &lt;a href=&quot;https://hackage.haskell.org/package/hostname-1.0/docs/Network-HostName.html&quot;&gt;somewhat-analogous
-function&lt;/a&gt;
-in Haskell does indeed have the type &lt;code&gt;IO Hostname&lt;/code&gt;.&lt;/p&gt;
-
-	</description>
-        <pubDate>Wed, 21 Mar 2018 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2018/03/21/Is-node0-a-pure-function.html</guid>
       </item>
     
   </channel>
