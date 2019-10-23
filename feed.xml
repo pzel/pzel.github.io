@@ -7,6 +7,25 @@
     <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
+        <title>I'm co-authoring a new blog</title>
+        <description>An announcement
+	&lt;p&gt;&lt;a href=&quot;https://well-ironed.com&quot;&gt;I've started a new blog&lt;/a&gt; with my friend &lt;a href=&quot;https://github.com/studzien&quot;&gt;Rafal
+Studnicki&lt;/a&gt;. We'll be covering a wide variety of
+software engineering topics, focusing chiefly on
+&lt;a href=&quot;https://elixir-lang.org/&quot;&gt;Elixir&lt;/a&gt; &amp;amp; &lt;a href=&quot;https://www.erlang.org/&quot;&gt;Erlang&lt;/a&gt;,
+functional programming, testing, and software correctness.&lt;/p&gt;
+
+&lt;p&gt;The idea is to try to put in writing our shared and individual experience from
+the world of software development. This blog will continue to serve as my
+personal scratchpad.&lt;/p&gt;
+
+	</description>
+        <pubDate>Wed, 23 Oct 2019 00:00:00 +0200</pubDate>
+        <link>http://pzel.github.io/2019/10/23/Im-co-authoring-a-new-blog.html</link>
+        <guid isPermaLink="true">http://pzel.github.io/2019/10/23/Im-co-authoring-a-new-blog.html</guid>
+      </item>
+    
+      <item>
         <title>For focused reading, disconnect wifi</title>
         <description>
 	&lt;p&gt;Today I had a 50-page PDF whitepaper to read. I didn't know how long it was
@@ -1057,23 +1076,6 @@ by which the host learns its own IP address.&lt;/p&gt;&lt;/blockquote&gt;
         <pubDate>Sat, 21 Jul 2018 00:00:00 +0200</pubDate>
         <link>http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</link>
         <guid isPermaLink="true">http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</guid>
-      </item>
-    
-      <item>
-        <title>CUPS: Adding a printer as a user</title>
-        <description>
-	&lt;p&gt;If you're getting strange &lt;code&gt;Forbidden&lt;/code&gt; errors while adding new printers via CUPS,
-make sure your user is part of the &lt;code&gt;lpadmin&lt;/code&gt; group.&lt;/p&gt;
-
-&lt;pre&gt;&lt;code&gt;gpasswd -a $USER lpadmin
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Log out, log in again and enjoy your printer.&lt;/p&gt;
-
-	</description>
-        <pubDate>Tue, 27 Mar 2018 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2018/03/27/CUPS-adding-printer-as-a-user.html</guid>
       </item>
     
   </channel>
