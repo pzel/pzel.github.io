@@ -3,8 +3,8 @@
   <channel>
     <title>Simon Zelazny's Blog</title>
     <description></description>
-    <link>http://pzel.github.io</link>
-    <atom:link href="http://pzel.github.io/feed.xml" rel="self" type="application/rss+xml" />
+    <link>https://pzel.name</link>
+    <atom:link href="https://pzel.name/feed.xml" rel="self" type="application/rss+xml" />
     
       <item>
         <title>I'm co-authoring a new blog</title>
@@ -21,8 +21,8 @@ personal scratchpad.&lt;/p&gt;
 
 	</description>
         <pubDate>Wed, 23 Oct 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/2019/10/23/Im-co-authoring-a-new-blog.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2019/10/23/Im-co-authoring-a-new-blog.html</guid>
+        <link>https://pzel.name/2019/10/23/Im-co-authoring-a-new-blog.html</link>
+        <guid isPermaLink="true">https://pzel.name/2019/10/23/Im-co-authoring-a-new-blog.html</guid>
       </item>
     
       <item>
@@ -65,8 +65,8 @@ found in &lt;a href=&quot;http://www.calnewport.com/blog/&quot;&gt;Cal Newport&l
 
 	</description>
         <pubDate>Wed, 02 Oct 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</guid>
+        <link>https://pzel.name/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/10/02/For-focused-reading,-disconnect-wifi.html</guid>
       </item>
     
       <item>
@@ -165,8 +165,8 @@ and that 40-year-old tools are still excellent at what they were built to do.&lt
 
 	</description>
         <pubDate>Sat, 06 Jul 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2019/07/06/Plain-text-&amp;-un-x-tools-are-still-the-best.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/07/06/Plain-text-&amp;-un-x-tools-are-still-the-best.html</guid>
+        <link>https://pzel.name/til/2019/07/06/Plain-text-&amp;-un-x-tools-are-still-the-best.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/07/06/Plain-text-&amp;-un-x-tools-are-still-the-best.html</guid>
       </item>
     
       <item>
@@ -267,8 +267,8 @@ runit's log facility.&lt;/p&gt;
 
 	</description>
         <pubDate>Tue, 25 Jun 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</guid>
+        <link>https://pzel.name/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/06/25/Ruby-apps-under-runit-notes-to-self.html</guid>
       </item>
     
       <item>
@@ -329,8 +329,8 @@ stopping. Early feedback about unexpected output is great in tests.&lt;/p&gt;
 
 	</description>
         <pubDate>Tue, 14 May 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</guid>
+        <link>https://pzel.name/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/05/14/How-I-learned-to-never-match-on-os-cmd-output.html</guid>
       </item>
     
       <item>
@@ -425,8 +425,8 @@ looking more 'functional' in the large.&lt;/p&gt;
 
 	</description>
         <pubDate>Sat, 06 Apr 2019 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</guid>
+        <link>https://pzel.name/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/04/06/Uses-for-traits-vs-type-aliases-in-Ponylang.html</guid>
       </item>
     
       <item>
@@ -664,8 +664,8 @@ vainly trying to expel the infinitely-looping snake from our software garden.&lt
 
 	</description>
         <pubDate>Sun, 31 Mar 2019 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/2019/03/31/Uncrashable-languages-arent.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2019/03/31/Uncrashable-languages-arent.html</guid>
+        <link>https://pzel.name/2019/03/31/Uncrashable-languages-arent.html</link>
+        <guid isPermaLink="true">https://pzel.name/2019/03/31/Uncrashable-languages-arent.html</guid>
       </item>
     
       <item>
@@ -708,8 +708,8 @@ and &lt;code&gt;files/follower_script.sh.j2&lt;/code&gt; to all the others.&lt;/
 
 	</description>
         <pubDate>Wed, 20 Mar 2019 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</guid>
+        <link>https://pzel.name/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html</guid>
       </item>
     
       <item>
@@ -1050,8 +1050,8 @@ the solution lives in OTP?&quot; Chances are, the answer is yes!&lt;/p&gt;
 
 	</description>
         <pubDate>Mon, 18 Feb 2019 00:00:00 +0100</pubDate>
-        <link>http://pzel.github.io/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</guid>
+        <link>https://pzel.name/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</link>
+        <guid isPermaLink="true">https://pzel.name/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html</guid>
       </item>
     
       <item>
@@ -1074,8 +1074,8 @@ by which the host learns its own IP address.&lt;/p&gt;&lt;/blockquote&gt;
 
 	</description>
         <pubDate>Sat, 21 Jul 2018 00:00:00 +0200</pubDate>
-        <link>http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</link>
-        <guid isPermaLink="true">http://pzel.github.io/til/2018/07/21/sending-0000-doesnt-make-sense.html</guid>
+        <link>https://pzel.name/til/2018/07/21/sending-0000-doesnt-make-sense.html</link>
+        <guid isPermaLink="true">https://pzel.name/til/2018/07/21/sending-0000-doesnt-make-sense.html</guid>
       </item>
     
   </channel>

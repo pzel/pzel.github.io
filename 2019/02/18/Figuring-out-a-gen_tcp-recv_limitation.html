@@ -1,12 +1,13 @@
 <!doctype html>
 <html>
   <head>
+    <meta http-equiv="refresh" content="0; url=https://pzel.name/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html"/>
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
     <title>Figuring out a gen_tcp:recv limitation :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
-    <link href='http://pzel.github.io/feed.xml' rel='alternate' type='application/rss+xml'>
+    <link href='https://pzel.name/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
   img { display: inline-block; width: 100%;}
   #content { margin: 0em 1em; }
@@ -55,12 +56,14 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 </style>
   </head>
   <body>
-    <div id="content" class="clearfix"> <div class="post-body">
-  <h1>Figuring out a gen_tcp:recv limitation</h1>
-  <small class="post-date">2019-02-18</small>
-  <div class="heading">
-    <p>In which a suprisingly pernicious framed payload leads to OTP spelunking.</p>
-    <p><span class="tags">
+    <a href="/2019/02/18/Figuring-out-a-gen_tcp-recv_limitation.html">This content has moved to pzel.name</a><hr>
+    <div id="content" class="clearfix">
+      <div class="post-body">
+        <h1>Figuring out a gen_tcp:recv limitation</h1>
+        <small class="post-date">2019-02-18</small>
+        <div class="heading">
+          <p>In which a suprisingly pernicious framed payload leads to OTP spelunking.</p>
+          <p><span class="tags">
   
   <span class="tag">erlang</span>
   
@@ -70,8 +73,8 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
   
 </span>
 </p>
-  </div>
-  <h2>The setup: sending a string over TCP</h2>
+        </div>
+        <h2>The setup: sending a string over TCP</h2>
 
 <p>Let's say you want to send the ASCII string <code>Fiat lux!</code> to an Erlang process
 listening on the other side of a TCP connection. Not a big deal, right?</p>
@@ -404,20 +407,20 @@ code.</p>
 in Erlang, please consider the question: "Peraphs this was solved long ago and
 the solution lives in OTP?" Chances are, the answer is yes!</p>
 
-  <div class="post-nav">
-    <div class="prev">
-      
-      <a href="/til/2018/07/21/sending-0000-doesnt-make-sense.html">⇦Sending 0.0.0.0 doesn't make sense</a>
-      
-    </div>
-    <div class="up"><a href="/">⇧Back to top</a></div>
-    <div class="next">
-      
-      <a href="/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html">How to grab all hosts but the first, in Ansible⇨</a>
-      
-    </div>
-    <div>&nbsp;</div>
-    <footer>
+        <div class="post-nav">
+          <div class="prev">
+            
+            <a href="/til/2018/07/21/sending-0000-doesnt-make-sense.html">⇦Sending 0.0.0.0 doesn't make sense</a>
+            
+          </div>
+          <div class="up"><a href="/">⇧Back to top</a></div>
+          <div class="next">
+            
+            <a href="/til/2019/03/20/How-to-grab-all-hosts-but-the-first-in-Ansible.html">How to grab all hosts but the first, in Ansible⇨</a>
+            
+          </div>
+          <div>&nbsp;</div>
+          <footer>
   <div id="lfooter">
     <span class='copy'>&copy; 2013-2019 <a href="/about.html">Simon Zelazny</a> </span>
   </div>
@@ -433,9 +436,9 @@ the solution lives in OTP?" Chances are, the answer is yes!</p>
   <span style="clear:both">&nbsp;</span>
 </footer>
 
-  </div>
-</div>
-
+        </div>
+      </div>
     </div>
   </body>
 </html>
+
