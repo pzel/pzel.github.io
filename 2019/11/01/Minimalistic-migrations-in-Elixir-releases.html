@@ -1,11 +1,11 @@
 <!doctype html>
 <html>
   <head>
-    <meta http-equiv="refresh" content="0; url=https://pzel.name/2019/10/23/Im-co-authoring-a-new-blog.html"/>
+    <meta http-equiv="refresh" content="0; url=https://pzel.name/2019/11/01/Minimalistic-migrations-in-Elixir-releases.html"/>
     <meta charset="utf-8">
     <meta name="google-site-verification" content=""/>
     <meta name=viewport content="width=device-width, initial-scale=1"/>
-    <title>I'm co-authoring a new blog :: Simon Zelazny's Blog</title>
+    <title>Minimalistic migrations in Elixir releases :: Simon Zelazny's Blog</title>
     <link rel="author" href="/humans.txt" />
     <link href='https://pzel.name/feed.xml' rel='alternate' type='application/rss+xml'>
     <style type="text/css">@media(max-width: 800px) {
@@ -56,40 +56,78 @@ footer { text-align: justify; font-size: 90%; clear: both; padding: 1em 0;}
 </style>
   </head>
   <body>
-    <a href="/2019/10/23/Im-co-authoring-a-new-blog.html">This content has moved to pzel.name</a><hr>
+    <a href="/2019/11/01/Minimalistic-migrations-in-Elixir-releases.html">This content has moved to pzel.name</a><hr>
     <div id="content" class="clearfix">
       <div class="post-body">
-        <h1>I'm co-authoring a new blog</h1>
-        <small class="post-date">2019-10-23</small>
+        <h1>Minimalistic migrations in Elixir releases</h1>
+        <small class="post-date">2019-11-01</small>
         <div class="heading">
-          <p>An announcement</p>
+          <p>Ensure your schemas are always in place, in under ten lines of code</p>
           <p><span class="tags">
   
   <span class="tag">elixir</span>
   
+  <span class="tag">release</span>
+  
+  <span class="tag">ecto</span>
+  
+  <span class="tag">migrations</span>
+  
 </span>
 </p>
         </div>
-        <p><a href="https://well-ironed.com">I've started a new blog</a> with my friend <a href="https://github.com/studzien">Rafal
-Studnicki</a>. We'll be covering a wide variety of
-software engineering topics, focusing chiefly on
-<a href="https://elixir-lang.org/">Elixir</a> &amp; <a href="https://www.erlang.org/">Erlang</a>,
-functional programming, testing, and software correctness.</p>
+        <p>If you're deploying your Elixir project as an <a href="http://erlang.org/doc/design_principles/release_structure.html">OTP release</a> (as opposed to,
+say, pulling your entire repo and running <code>iex -S mix</code> in production, which you
+shouldn't do), you've probably run across the problem of ensuring your <a href="https://hexdocs.pm/ecto_sql/Ecto.Migration.html">Ecto
+migrations</a> run before your application starts.</p>
 
-<p>The idea is to try to put in writing our shared and individual experience from
-the world of software development. This blog will continue to serve as my
-personal scratchpad.</p>
+<p>There are several <a href="https://kate-travers.com/ecto-migrations-on-production/">blog</a> and <a href="https://elixirforum.com/t/how-to-do-migrations-on-elixir-1-9s-mix-release/23382">forum</a> <a href="https://www.thegreatcodeadventure.com/run-ecto-migrations-in-production-distillery/">posts</a> out there talking about
+running migrations as part of the Elixir release startup process. I'm probably
+not going to add extra value if you already have your workflow figured out, but
+if you're just getting started and happen to be using <a href="https://elixir-lang.org/getting-started/mix-otp/config-and-releases.html#configuring-releases">the new release
+configuration functionality in Elixir</a>, you'll be happy to know that this
+problem can be golfed to under 10 lines of code, and no extra dependencies.</p>
+
+<p>Here goes. In <code>config/releases.exs</code>, you need <em>1 line</em>:</p>
+
+<pre><code>MyApp.ReleaseTasks.migrate()
+</code></pre>
+
+<p>Now, for the implementation module:</p>
+
+<pre><code>defmodule MyApp.ReleaseTasks do
+  def migrate do
+    {:ok, _} = Application.ensure_all_started(:my_app)
+    path = Application.app_dir(:my_app, "priv/repo/migrations")
+    Ecto.Migrator.run(MyApp.DA.Repo, path, :up, all: true)
+  end
+end
+</code></pre>
+
+<p><code>Ecto.Migrator.run</code> will return a list of integers representing the migrations
+that were actually applied, so an extra 2 lines of code will give you a nice diagnostic log message:</p>
+
+<pre><code>defmodule MyApp.ReleaseTasks do
+  require Logger
+
+  def migrate do
+    {:ok, _} = Application.ensure_all_started(:my_app)
+    path = Application.app_dir(:my_app, "priv/repo/migrations")
+    applied = Ecto.Migrator.run(MyApp.DA.Repo, path, :up, all: true)
+    Logger.info("Applied migrations: #{applied}")
+  end
+end
+</code></pre>
 
         <div class="post-nav">
           <div class="prev">
             
-            <a href="/til/2019/10/02/For-focused-reading,-disconnect-wifi.html">⇦For focused reading, disconnect wifi</a>
+            <a href="/2019/10/23/Im-co-authoring-a-new-blog.html">⇦I'm co-authoring a new blog</a>
             
           </div>
           <div class="up"><a href="/">⇧Back to top</a></div>
           <div class="next">
-            
-            <a href="/2019/11/01/Minimalistic-migrations-in-Elixir-releases.html">Minimalistic migrations in Elixir releases⇨</a>
+             &nbsp;
             
           </div>
           <div>&nbsp;</div>
